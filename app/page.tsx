@@ -25,12 +25,12 @@ export default function Home() {
           <p className="mb-5 inline-flex rounded-full bg-blue-100 px-3 py-1 text-base font-bold tracking-wide text-blue-800">
             Structured coding for real outcomes
           </p>
-          <h2 className="mb-6 text-5xl font-black leading-tight text-slate-900 md:text-7xl">
+          <h2 className="mb-6 text-4xl font-black leading-tight text-slate-900 md:text-6xl">
             Learn to Code.
             <br />
             Build Your Future.
           </h2>
-          <p className="mb-10 max-w-3xl text-2xl font-semibold text-slate-700">
+          <p className="mb-10 max-w-3xl text-xl font-semibold text-slate-700 md:text-2xl">
             Interactive lessons, code runner practice, chapter quizzes, and progress tracking in one focused learning flow.
           </p>
           <div className="flex flex-wrap items-center gap-3">
@@ -62,62 +62,67 @@ export default function Home() {
           </div>
           <div className="rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-100/85 to-white/90 p-7 shadow-sm backdrop-blur-sm">
             <p className="text-base font-bold text-teal-800">Current Focus</p>
-            <p className="mt-2 text-2xl font-black text-slate-900">Python Foundations</p>
-            <p className="mt-2 text-lg font-medium text-slate-700">Structured chapter flow with lock/unlock progression.</p>
+            <p className="mt-2 text-2xl font-black text-slate-900">Multi-Track Learning</p>
+            <p className="mt-2 text-lg font-medium text-slate-700">Languages, roadmaps, and core subjects in one platform.</p>
           </div>
         </div>
       </section>
 
       <section className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-20 pt-8 md:px-10">
-        <div className="mb-8 flex items-center gap-4">
-          <span className="inline-flex rounded-full bg-gradient-to-r from-violet-600 to-pink-600 px-4 py-1 text-sm font-bold text-white">
-            Step 1
-          </span>
-          <h3 className="rounded-xl bg-gradient-to-r from-violet-100 to-pink-100 px-4 py-2 text-5xl font-black text-slate-900">
-            Choose Your Learning Path
-          </h3>
-        </div>
+        <h3 className="mb-8 inline-flex rounded-xl bg-gradient-to-r from-violet-100 to-pink-100 px-4 py-2 text-4xl font-black text-slate-900 md:text-5xl">
+          Choose Your Learning Path
+        </h3>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-100/85 to-white/90 p-7 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <h4 className="mb-3 inline-flex rounded-lg bg-violet-600 px-3 py-1 text-2xl font-black text-white">Programming Languages</h4>
-            <p className="mb-5 text-xl font-medium text-slate-700">Python, JavaScript, Java, C++, and practice-first pathways.</p>
+            <p className="mb-5 text-xl font-medium text-slate-700">
+              Python
+              <br />
+              Java
+              <br />
+              C++
+            </p>
             <span className="text-lg font-bold text-blue-700">Explore path</span>
           </div>
           <div className="rounded-2xl border border-fuchsia-200 bg-gradient-to-br from-fuchsia-100/80 to-white/90 p-7 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <h4 className="mb-3 inline-flex rounded-lg bg-fuchsia-600 px-3 py-1 text-2xl font-black text-white">Roadmaps</h4>
-            <p className="mb-5 text-xl font-medium text-slate-700">Web Dev, AI/ML, Data Analytics with guided lesson progression.</p>
+            <p className="mb-5 text-xl font-medium text-slate-700">
+              Web Development
+              <br />
+              AI/ML
+              <br />
+              Data Science
+            </p>
             <span className="text-lg font-bold text-blue-700">Explore roadmap</span>
           </div>
           <div className="rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-100/80 to-white/90 p-7 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md">
-            <h4 className="mb-3 inline-flex rounded-lg bg-orange-500 px-3 py-1 text-2xl font-black text-white">Foundational Subjects</h4>
-            <p className="mb-5 text-xl font-medium text-slate-700">Mathematics and logic-focused modules to strengthen coding skills.</p>
+            <h4 className="mb-3 inline-flex rounded-lg bg-orange-500 px-3 py-1 text-2xl font-black text-white">Core Subjects</h4>
+            <p className="mb-5 text-xl font-medium text-slate-700">
+              Mathematics
+              <br />
+              Problem Solving
+              <br />
+              Computer Science Basics
+            </p>
             <span className="text-lg font-bold text-blue-700">Explore modules</span>
           </div>
         </div>
       </section>
 
       <section className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-20 md:px-10">
-        <div className="mb-8 flex items-center gap-4">
-          <span className="inline-flex rounded-full bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-1 text-sm font-bold text-white">
-            Step 2
-          </span>
-          <h3 className="rounded-xl bg-gradient-to-r from-orange-100 to-pink-100 px-4 py-2 text-5xl font-black text-slate-900">
-            Learn, Practice, Achieve
-          </h3>
-        </div>
+        <h3 className="mb-8 inline-flex rounded-xl bg-gradient-to-r from-orange-100 to-pink-100 px-4 py-2 text-4xl font-black text-slate-900 md:text-5xl">
+          Learn, Practice, Achieve
+        </h3>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           <div className="rounded-2xl border border-pink-200 bg-white/90 p-7 shadow-sm backdrop-blur-sm">
-            <p className="mb-3 inline-flex rounded-full bg-pink-600 px-3 py-1 text-sm font-bold text-white">Step A</p>
             <h4 className="mb-2 text-3xl font-black text-slate-900">Learn Concept</h4>
             <p className="text-lg font-medium text-slate-700">Understand lesson concepts through structured and readable content.</p>
           </div>
           <div className="rounded-2xl border border-indigo-200 bg-white/90 p-7 shadow-sm backdrop-blur-sm">
-            <p className="mb-3 inline-flex rounded-full bg-indigo-600 px-3 py-1 text-sm font-bold text-white">Step B</p>
             <h4 className="mb-2 text-3xl font-black text-slate-900">Run Code</h4>
             <p className="text-lg font-medium text-slate-700">Practice instantly in the built-in runner and validate output.</p>
           </div>
           <div className="rounded-2xl border border-emerald-200 bg-white/90 p-7 shadow-sm backdrop-blur-sm">
-            <p className="mb-3 inline-flex rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white">Step C</p>
             <h4 className="mb-2 text-3xl font-black text-slate-900">Pass & Progress</h4>
             <p className="text-lg font-medium text-slate-700">Complete quiz + coding checks and track real progress chapter by chapter.</p>
           </div>

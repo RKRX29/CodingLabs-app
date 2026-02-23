@@ -71,11 +71,19 @@ export default function PythonCoursePage() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-gray-50 p-8 text-gray-900">
-      <div className="max-w-4xl mx-auto">
+    <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-rose-50 via-fuchsia-50 to-orange-50 p-8 text-gray-900">
+      <div className="pointer-events-none absolute -left-36 -top-24 h-96 w-96 rounded-full bg-fuchsia-300/55 blur-3xl" />
+      <div className="pointer-events-none absolute right-[-120px] top-16 h-[28rem] w-[28rem] rounded-full bg-orange-300/50 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-[-140px] left-1/3 h-[30rem] w-[30rem] rounded-full bg-pink-300/45 blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-0 top-24 h-64 bg-gradient-to-r from-purple-200/25 via-pink-200/25 to-orange-200/25 blur-2xl" />
+
+      <div className="relative z-10 max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">Python Course</h1>
-          <Link href="/dashboard" className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700">
+          <Link
+            href="/dashboard"
+            className="rounded-lg border border-slate-200 bg-slate-900 px-4 py-2 text-base font-semibold text-white shadow-sm hover:bg-slate-800"
+          >
             Back to Dashboard
           </Link>
         </div>
@@ -94,9 +102,9 @@ export default function PythonCoursePage() {
         {!loading && error && <p className="text-red-600">{error}</p>}
 
         {!loading && !error && lessons.length === 0 && (
-          <div className="bg-white border rounded-lg p-6">
+          <div className="bg-white/90 border rounded-lg p-6 backdrop-blur-sm">
             <h2 className="text-xl font-semibold mb-2">No lessons yet</h2>
-            <p className="text-gray-600">Add lesson documents in MongoDB with `courseId: "python"` to see them here.</p>
+            <p className="text-gray-600">Add lesson documents in MongoDB with `courseId: &quot;python&quot;` to see them here.</p>
           </div>
         )}
 
@@ -107,7 +115,7 @@ export default function PythonCoursePage() {
                 index > 0 && !completedIds.has(lessons[index - 1]?._id)
 
               return (
-              <article key={lesson._id} className="bg-white border rounded-lg p-6 shadow-sm">
+              <article key={lesson._id} className="bg-white/90 border rounded-lg p-6 shadow-sm backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-sm text-blue-700 font-semibold">Lesson {lesson.lessonNumber}</p>
                   {completedIds.has(lesson._id) ? (
