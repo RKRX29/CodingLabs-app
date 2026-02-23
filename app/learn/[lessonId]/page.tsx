@@ -23,15 +23,6 @@ type ProgressItem = {
   quizPassed?: boolean
 }
 
-type Attempt = {
-  _id: string
-  status: string
-  stdout: string
-  stderr: string
-  passed: boolean
-  createdAt: string
-}
-
 export default function LessonDetailPage() {
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [allLessons, setAllLessons] = useState<Lesson[]>([])
@@ -55,11 +46,10 @@ export default function LessonDetailPage() {
     memory?: number
   } | null>(null)
   const [runError, setRunError] = useState('')
-  const [attempts, setAttempts] = useState<Attempt[]>([])
-  const [attemptsLoading, setAttemptsLoading] = useState(false)
   const [hasPassedAttempt, setHasPassedAttempt] = useState(false)
   const [hasQuizPassed, setHasQuizPassed] = useState(false)
   const [hasReadLesson, setHasReadLesson] = useState(false)
+  const [firstLessonView, setFirstLessonView] = useState<'menu' | 'lesson' | 'exercise'>('menu')
   const [selectedQuizOption, setSelectedQuizOption] = useState<number | null>(null)
   const [quizMessage, setQuizMessage] = useState('')
   const params = useParams<{ lessonId: string }>()
@@ -108,6 +98,7 @@ export default function LessonDetailPage() {
         setLesson(selectedLesson)
         setCode(selectedLesson.codeExample || '')
         setHasReadLesson(selectedLesson.lessonNumber !== 1)
+        setFirstLessonView(selectedLesson.lessonNumber === 1 ? 'menu' : 'exercise')
         setSelectedQuizOption(null)
         setQuizMessage('')
         const currentProgress = (progressData.progress || []).find(
@@ -117,20 +108,9 @@ export default function LessonDetailPage() {
         setHasQuizPassed(Boolean(currentProgress?.quizPassed))
         setHasPassedAttempt(Boolean(currentProgress?.codePassed))
 
-        setAttemptsLoading(true)
-        const attemptsRes = await fetch(`/api/submissions?lessonId=${params.lessonId}&limit=5`)
-        const attemptsData = await attemptsRes.json()
-        if (attemptsRes.ok) {
-          const fetchedAttempts = attemptsData.submissions || []
-          setAttempts(fetchedAttempts)
-          if (fetchedAttempts.some((item: Attempt) => item.passed)) {
-            setHasPassedAttempt(true)
-          }
-        }
       } catch {
         setError('Network error while loading lesson')
       } finally {
-        setAttemptsLoading(false)
         setLoading(false)
       }
     }
@@ -238,16 +218,6 @@ export default function LessonDetailPage() {
         })
       })
 
-      const attemptsRes = await fetch(`/api/submissions?lessonId=${lesson._id}&limit=5`)
-      const attemptsData = await attemptsRes.json()
-      if (attemptsRes.ok) {
-        const fetchedAttempts = attemptsData.submissions || []
-        setAttempts(fetchedAttempts)
-        if (fetchedAttempts.some((item: Attempt) => item.passed)) {
-          setHasPassedAttempt(true)
-        }
-      }
-
       if (didPass) {
         await fetch('/api/progress/save', {
           method: 'POST',
@@ -320,6 +290,9 @@ export default function LessonDetailPage() {
   const lessonQuiz = lesson ? pythonQuizzes[lesson.lessonNumber] : undefined
   const isFirstLesson = lesson?.lessonNumber === 1
   const isExerciseUnlocked = !isFirstLesson || hasReadLesson
+  const showFirstLessonMenu = isFirstLesson && firstLessonView === 'menu'
+  const showLessonTheory = !isFirstLesson || firstLessonView === 'lesson'
+  const showExerciseView = !isFirstLesson || firstLessonView === 'exercise'
 
   const handleSubmitQuiz = async () => {
     if (!lesson || !lessonQuiz || selectedQuizOption === null) return
@@ -431,80 +404,86 @@ export default function LessonDetailPage() {
               : 'bg-white border rounded-lg p-6 shadow-sm space-y-5'
           }
         >
-          {isFirstLesson && (
-            <section className="rounded-2xl border border-violet-200 bg-white/80 p-5 backdrop-blur-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="inline-flex rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">
-                  Lesson Experience
-                </p>
-                <p className="text-sm font-semibold text-slate-600">Interactive Intro</p>
-              </div>
-              <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-emerald-100">
-                <div className="h-full w-1/5 rounded-full bg-emerald-500" />
-              </div>
-              <div className="grid gap-3 md:grid-cols-[120px_1fr] md:items-center">
-                <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-4xl">
-                  <span role="img" aria-label="code">
-                    {'</>'}
-                  </span>
-                </div>
-                <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4">
-                  <p className="text-lg font-semibold text-slate-800">
-                    Start with core Python basics, then solve a quick exercise and run your first code.
-                  </p>
-                </div>
-              </div>
-            </section>
-          )}
-
           <div>
             <h2 className="text-2xl font-bold mb-2 text-slate-900">{lesson?.title}</h2>
             <p className="text-gray-700">{lesson?.description}</p>
           </div>
 
-          <section
-            className={
-              isFirstLesson
-                ? 'rounded-xl border border-cyan-200 bg-cyan-50/80 p-4'
-                : ''
-            }
-          >
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">
-                {isFirstLesson ? 'Concept Snapshot' : 'Concept'}
-              </h3>
-              {isFirstLesson && (
-                <button
-                  type="button"
-                  onClick={() => setHasReadLesson(true)}
-                  className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-cyan-700"
-                >
-                  {hasReadLesson ? 'Read Complete' : 'Read Lesson'}
-                </button>
-              )}
-            </div>
-            <p className="whitespace-pre-line text-gray-800">{lesson?.content}</p>
-            {isFirstLesson && !hasReadLesson && (
-              <p className="mt-3 text-sm font-semibold text-amber-700">
-                Read this lesson first to unlock the exercise below.
-              </p>
-            )}
-          </section>
-
-          {lesson?.codeExample && (
+          {showFirstLessonMenu && (
             <section
-              className={
-                isFirstLesson
-                  ? 'rounded-xl border border-indigo-200 bg-indigo-50/70 p-4'
-                  : ''
-              }
+              className="grid gap-3 md:grid-cols-2"
             >
+              <button
+                type="button"
+                onClick={() => setFirstLessonView('lesson')}
+                className="w-full rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4 text-left hover:bg-cyan-100"
+              >
+                <p className="text-xs font-bold text-cyan-700">Lesson Item</p>
+                <p className="text-lg font-bold text-slate-900">Lesson 1.1: What is Python</p>
+                <p className="text-sm text-slate-600 mt-1">Click to open lesson theory.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFirstLessonView('exercise')}
+                disabled={!hasReadLesson}
+                className="w-full rounded-xl border border-pink-200 bg-pink-50 px-4 py-4 text-left hover:bg-pink-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <p className="text-xs font-bold text-pink-700">Exercise Item</p>
+                <p className="text-lg font-bold text-slate-900">Exercise 1.1: What is Python</p>
+                <p className="text-sm text-slate-600 mt-1">
+                  {hasReadLesson ? 'Click to open exercise.' : 'Read Lesson 1.1 first to unlock.'}
+                </p>
+              </button>
+            </section>
+          )}
+
+          {showLessonTheory && (
+            <section className={isFirstLesson ? 'rounded-xl border border-cyan-200 bg-cyan-50/80 p-4' : ''}>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-900">
+                  {isFirstLesson ? 'Lesson 1.1: What is Python' : 'Concept'}
+                </h3>
+                {isFirstLesson && (
+                  <button
+                    type="button"
+                    onClick={() => setHasReadLesson(true)}
+                    className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-cyan-700"
+                  >
+                    {hasReadLesson ? 'Read Complete' : 'Mark as Read'}
+                  </button>
+                )}
+              </div>
+              <p className="whitespace-pre-line text-gray-800">{lesson?.content}</p>
+              {isFirstLesson && (
+                <div className="mt-4 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFirstLessonView('menu')}
+                    className="rounded-lg bg-gray-200 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-300"
+                  >
+                    Go Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHasReadLesson(true)
+                      setFirstLessonView('exercise')
+                    }}
+                    className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+                  >
+                    Continue
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+
+          {showExerciseView && lesson?.codeExample && (
+            <section className={isFirstLesson ? 'rounded-xl border border-indigo-200 bg-indigo-50/70 p-4' : ''}>
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-slate-900">Code Example</h3>
                 {isFirstLesson && (
-                  <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">
-                    Read + Try
-                  </span>
+                  <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">Read + Try</span>
                 )}
               </div>
               <pre className="bg-gray-900 text-gray-100 p-4 rounded overflow-x-auto text-sm border border-indigo-300">
@@ -513,7 +492,7 @@ export default function LessonDetailPage() {
             </section>
           )}
 
-          {(lesson?.exercise || lesson?.expectedOutput) && (
+          {showExerciseView && (lesson?.exercise || lesson?.expectedOutput) && (
             <section
               className={
                 isFirstLesson
@@ -524,12 +503,12 @@ export default function LessonDetailPage() {
               {lesson?.exercise && (
                 <div className={isFirstLesson ? 'rounded-xl border border-pink-200 bg-pink-50/80 p-4' : ''}>
                   <h3 className="text-lg font-semibold mb-2 text-slate-900">
-                    Exercise {hasQuizPassed ? '✓' : ''}
+                    Exercise {hasQuizPassed ? '(Passed)' : ''}
                   </h3>
                   {isExerciseUnlocked ? (
                     <p className="text-gray-800">{lesson.exercise}</p>
                   ) : (
-                    <p className="text-amber-700 font-semibold">Locked. Click &quot;Read Lesson&quot; above to unlock.</p>
+                    <p className="text-amber-700 font-semibold">Locked. Open Lesson 1.1 first to unlock.</p>
                   )}
                 </div>
               )}
@@ -543,10 +522,10 @@ export default function LessonDetailPage() {
             </section>
           )}
 
-          {lessonQuiz && (
+          {showExerciseView && lessonQuiz && (
             <section>
               <h3 className="text-lg font-semibold mb-2 text-slate-900">
-                Exercise Check {hasQuizPassed ? '✓' : ''}
+                Exercise Check {hasQuizPassed ? '(Passed)' : ''}
               </h3>
               {!isExerciseUnlocked && (
                 <p className="mb-3 text-sm font-semibold text-amber-700">
@@ -579,6 +558,7 @@ export default function LessonDetailPage() {
             </section>
           )}
 
+          {showExerciseView && (
           <section className={isFirstLesson ? 'rounded-xl border border-blue-200 bg-white/80 p-4' : ''}>
             <h3 className="text-lg font-semibold mb-2 text-slate-900">
               {isFirstLesson ? 'Try It Yourself (Interactive Python Lab)' : 'Try It Yourself (Python)'}
@@ -638,32 +618,8 @@ export default function LessonDetailPage() {
                 </p>
               </div>
             )}
-
-            <div className="mt-5">
-              <h4 className="text-md font-semibold mb-2">Recent Attempts</h4>
-              {attemptsLoading && <p className="text-sm text-gray-600">Loading attempts...</p>}
-              {!attemptsLoading && attempts.length === 0 && (
-                <p className="text-sm text-gray-600">No attempts yet. Run your code to create one.</p>
-              )}
-              {!attemptsLoading && attempts.length > 0 && (
-                <div className="space-y-2">
-                  {attempts.map((attempt) => (
-                    <div key={attempt._id} className="bg-white border rounded p-3 text-sm">
-                      <p className="text-gray-800">
-                        <span className="font-semibold">Status:</span> {attempt.status}
-                      </p>
-                      <p className={attempt.passed ? 'text-green-700' : 'text-amber-700'}>
-                        {attempt.passed ? 'Passed check' : 'Not passed'}
-                      </p>
-                      <p className="text-gray-600">
-                        {new Date(attempt.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </section>
+          )}
 
           <section className="pt-2">
             <button

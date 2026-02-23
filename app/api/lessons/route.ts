@@ -16,21 +16,36 @@ export async function GET(req: Request) {
 
     let lessons = await Lesson.find({ courseId }).sort({ lessonNumber: 1 })
 
-    // Keep Python starter content in sync by inserting any missing lesson numbers.
+    // Keep Python starter content in sync by upserting official lesson data.
     if (courseId === 'python') {
-      const existingLessonNumbers = new Set(lessons.map((lesson: any) => lesson.lessonNumber))
-      const missingLessons = pythonLessons.filter(
-        lesson => !existingLessonNumbers.has(lesson.lessonNumber)
+      await Lesson.bulkWrite(
+        pythonLessons.map((item) => ({
+          updateOne: {
+            filter: { courseId: item.courseId, lessonNumber: item.lessonNumber },
+            update: {
+              $set: {
+                title: item.title,
+                description: item.description,
+                content: item.content,
+                codeExample: item.codeExample || '',
+                exercise: item.exercise || '',
+                expectedOutput: item.expectedOutput || ''
+              },
+              $setOnInsert: {
+                courseId: item.courseId,
+                lessonNumber: item.lessonNumber
+              }
+            },
+            upsert: true
+          }
+        }))
       )
-
-      if (missingLessons.length > 0) {
-        await Lesson.insertMany(missingLessons)
-        lessons = await Lesson.find({ courseId }).sort({ lessonNumber: 1 })
-      }
+      lessons = await Lesson.find({ courseId }).sort({ lessonNumber: 1 })
     }
 
     return NextResponse.json({ lessons })
-  } catch (error: any) {
-    return NextResponse.json({ error: 'Something went wrong', details: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    const details = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: 'Something went wrong', details }, { status: 500 })
   }
 }

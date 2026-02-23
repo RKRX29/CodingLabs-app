@@ -19,31 +19,24 @@ type ProgressItem = {
   completed: boolean
 }
 
-type SubmissionItem = {
-  lessonId: string
-}
-
 export default function PythonCoursePage() {
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
-  const [attemptedIds, setAttemptedIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     const fetchLessons = async () => {
       try {
-        const [lessonsRes, progressRes, submissionsRes] = await Promise.all([
+        const [lessonsRes, progressRes] = await Promise.all([
           fetch('/api/lessons?courseId=python'),
-          fetch('/api/progress?courseId=python'),
-          fetch('/api/submissions?courseId=python&limit=200')
+          fetch('/api/progress?courseId=python')
         ])
         const lessonsData = await lessonsRes.json()
         const progressData = await progressRes.json()
-        const submissionsData = await submissionsRes.json()
 
-        if (!lessonsRes.ok || !progressRes.ok || !submissionsRes.ok) {
-          setError(lessonsData.error || progressData.error || submissionsData.error || 'Failed to load lessons')
+        if (!lessonsRes.ok || !progressRes.ok) {
+          setError(lessonsData.error || progressData.error || 'Failed to load lessons')
           return
         }
 
@@ -55,11 +48,6 @@ export default function PythonCoursePage() {
             .map((item: ProgressItem) => item.lessonId)
         )
         setCompletedIds(completed)
-
-        const attempted = new Set<string>(
-          (submissionsData.submissions || []).map((item: SubmissionItem) => item.lessonId)
-        )
-        setAttemptedIds(attempted)
       } catch {
         setError('Network error while loading lessons')
       } finally {
@@ -120,10 +108,8 @@ export default function PythonCoursePage() {
                   <p className="text-sm text-blue-700 font-semibold">Lesson {lesson.lessonNumber}</p>
                   {completedIds.has(lesson._id) ? (
                     <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">Completed</span>
-                  ) : attemptedIds.has(lesson._id) ? (
-                    <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-700">Attempted</span>
                   ) : (
-                    <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">Not started</span>
+                    <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">Incomplete</span>
                   )}
                 </div>
                 <h2 className="text-xl font-bold mb-2">{lesson.title}</h2>
