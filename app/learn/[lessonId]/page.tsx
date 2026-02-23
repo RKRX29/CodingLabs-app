@@ -314,6 +314,7 @@ export default function LessonDetailPage() {
   }
 
   const lessonQuiz = lesson ? pythonQuizzes[lesson.lessonNumber] : undefined
+  const isFirstLesson = lesson?.lessonNumber === 1
 
   const handleSubmitQuiz = async () => {
     if (!lesson || !lessonQuiz || selectedQuizOption === null) return
@@ -417,37 +418,100 @@ export default function LessonDetailPage() {
             )}
           </article>
         ) : (
-        <article className="bg-white border rounded-lg p-6 shadow-sm space-y-5">
+        <article
+          className={
+            isFirstLesson
+              ? 'border border-fuchsia-200 bg-gradient-to-br from-white/95 via-rose-50/90 to-fuchsia-100/85 rounded-2xl p-6 shadow-md space-y-5'
+              : 'bg-white border rounded-lg p-6 shadow-sm space-y-5'
+          }
+        >
+          {isFirstLesson && (
+            <section className="rounded-2xl border border-violet-200 bg-white/80 p-5 backdrop-blur-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="inline-flex rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">
+                  Lesson Experience
+                </p>
+                <p className="text-sm font-semibold text-slate-600">Interactive Intro</p>
+              </div>
+              <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+                <div className="h-full w-1/5 rounded-full bg-emerald-500" />
+              </div>
+              <div className="grid gap-3 md:grid-cols-[120px_1fr] md:items-center">
+                <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-4xl">
+                  <span role="img" aria-label="code">
+                    {'</>'}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4">
+                  <p className="text-lg font-semibold text-slate-800">
+                    Start with core Python basics, then solve a quick exercise and run your first code.
+                  </p>
+                </div>
+              </div>
+            </section>
+          )}
+
           <div>
-            <h2 className="text-2xl font-bold mb-2">{lesson?.title}</h2>
+            <h2 className="text-2xl font-bold mb-2 text-slate-900">{lesson?.title}</h2>
             <p className="text-gray-700">{lesson?.description}</p>
           </div>
 
-          <section>
-            <h3 className="text-lg font-semibold mb-2">Concept</h3>
+          <section
+            className={
+              isFirstLesson
+                ? 'rounded-xl border border-cyan-200 bg-cyan-50/80 p-4'
+                : ''
+            }
+          >
+            <h3 className="text-lg font-semibold mb-2 text-slate-900">
+              {isFirstLesson ? 'Concept Snapshot' : 'Concept'}
+            </h3>
             <p className="whitespace-pre-line text-gray-800">{lesson?.content}</p>
           </section>
 
           {lesson?.codeExample && (
-            <section>
-              <h3 className="text-lg font-semibold mb-2">Code Example</h3>
-              <pre className="bg-gray-900 text-gray-100 p-4 rounded overflow-x-auto text-sm">
+            <section
+              className={
+                isFirstLesson
+                  ? 'rounded-xl border border-indigo-200 bg-indigo-50/70 p-4'
+                  : ''
+              }
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-900">Code Example</h3>
+                {isFirstLesson && (
+                  <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">
+                    Read + Try
+                  </span>
+                )}
+              </div>
+              <pre className="bg-gray-900 text-gray-100 p-4 rounded overflow-x-auto text-sm border border-indigo-300">
                 <code>{lesson.codeExample}</code>
               </pre>
             </section>
           )}
 
-          {lesson?.exercise && (
-            <section>
-              <h3 className="text-lg font-semibold mb-2">Exercise</h3>
-              <p className="text-gray-800">{lesson.exercise}</p>
-            </section>
-          )}
+          {(lesson?.exercise || lesson?.expectedOutput) && (
+            <section
+              className={
+                isFirstLesson
+                  ? 'grid gap-3 md:grid-cols-2'
+                  : 'space-y-3'
+              }
+            >
+              {lesson?.exercise && (
+                <div className={isFirstLesson ? 'rounded-xl border border-pink-200 bg-pink-50/80 p-4' : ''}>
+                  <h3 className="text-lg font-semibold mb-2 text-slate-900">Exercise</h3>
+                  <p className="text-gray-800">{lesson.exercise}</p>
+                </div>
+              )}
 
-          {lesson?.expectedOutput && (
-            <section>
-              <h3 className="text-lg font-semibold mb-2">Expected Output</h3>
-              <p className="text-gray-800">{lesson.expectedOutput}</p>
+              {lesson?.expectedOutput && (
+                <div className={isFirstLesson ? 'rounded-xl border border-emerald-200 bg-emerald-50/80 p-4' : ''}>
+                  <h3 className="text-lg font-semibold mb-2 text-slate-900">Expected Output</h3>
+                  <p className="text-gray-800">{lesson.expectedOutput}</p>
+                </div>
+              )}
             </section>
           )}
 
@@ -479,8 +543,10 @@ export default function LessonDetailPage() {
             </section>
           )}
 
-          <section>
-            <h3 className="text-lg font-semibold mb-2">Try It Yourself (Python)</h3>
+          <section className={isFirstLesson ? 'rounded-xl border border-blue-200 bg-white/80 p-4' : ''}>
+            <h3 className="text-lg font-semibold mb-2 text-slate-900">
+              {isFirstLesson ? 'Try It Yourself (Interactive Python Lab)' : 'Try It Yourself (Python)'}
+            </h3>
             <textarea
               value={code}
               onChange={(e) => setCode(e.target.value)}
