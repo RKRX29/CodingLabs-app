@@ -59,6 +59,7 @@ export default function LessonDetailPage() {
   const [attemptsLoading, setAttemptsLoading] = useState(false)
   const [hasPassedAttempt, setHasPassedAttempt] = useState(false)
   const [hasQuizPassed, setHasQuizPassed] = useState(false)
+  const [hasReadLesson, setHasReadLesson] = useState(false)
   const [selectedQuizOption, setSelectedQuizOption] = useState<number | null>(null)
   const [quizMessage, setQuizMessage] = useState('')
   const params = useParams<{ lessonId: string }>()
@@ -106,6 +107,9 @@ export default function LessonDetailPage() {
 
         setLesson(selectedLesson)
         setCode(selectedLesson.codeExample || '')
+        setHasReadLesson(selectedLesson.lessonNumber !== 1)
+        setSelectedQuizOption(null)
+        setQuizMessage('')
         const currentProgress = (progressData.progress || []).find(
           (item: ProgressItem) => item.lessonId === params.lessonId
         )
@@ -315,9 +319,11 @@ export default function LessonDetailPage() {
 
   const lessonQuiz = lesson ? pythonQuizzes[lesson.lessonNumber] : undefined
   const isFirstLesson = lesson?.lessonNumber === 1
+  const isExerciseUnlocked = !isFirstLesson || hasReadLesson
 
   const handleSubmitQuiz = async () => {
     if (!lesson || !lessonQuiz || selectedQuizOption === null) return
+    if (!isExerciseUnlocked) return
 
     const isCorrect = selectedQuizOption === lessonQuiz.correctIndex
     if (!isCorrect) {
@@ -463,10 +469,26 @@ export default function LessonDetailPage() {
                 : ''
             }
           >
-            <h3 className="text-lg font-semibold mb-2 text-slate-900">
-              {isFirstLesson ? 'Concept Snapshot' : 'Concept'}
-            </h3>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {isFirstLesson ? 'Concept Snapshot' : 'Concept'}
+              </h3>
+              {isFirstLesson && (
+                <button
+                  type="button"
+                  onClick={() => setHasReadLesson(true)}
+                  className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-cyan-700"
+                >
+                  {hasReadLesson ? 'Read Complete' : 'Read Lesson'}
+                </button>
+              )}
+            </div>
             <p className="whitespace-pre-line text-gray-800">{lesson?.content}</p>
+            {isFirstLesson && !hasReadLesson && (
+              <p className="mt-3 text-sm font-semibold text-amber-700">
+                Read this lesson first to unlock the exercise below.
+              </p>
+            )}
           </section>
 
           {lesson?.codeExample && (
@@ -501,8 +523,14 @@ export default function LessonDetailPage() {
             >
               {lesson?.exercise && (
                 <div className={isFirstLesson ? 'rounded-xl border border-pink-200 bg-pink-50/80 p-4' : ''}>
-                  <h3 className="text-lg font-semibold mb-2 text-slate-900">Exercise</h3>
-                  <p className="text-gray-800">{lesson.exercise}</p>
+                  <h3 className="text-lg font-semibold mb-2 text-slate-900">
+                    Exercise {hasQuizPassed ? '✓' : ''}
+                  </h3>
+                  {isExerciseUnlocked ? (
+                    <p className="text-gray-800">{lesson.exercise}</p>
+                  ) : (
+                    <p className="text-amber-700 font-semibold">Locked. Click &quot;Read Lesson&quot; above to unlock.</p>
+                  )}
                 </div>
               )}
 
@@ -517,7 +545,14 @@ export default function LessonDetailPage() {
 
           {lessonQuiz && (
             <section>
-              <h3 className="text-lg font-semibold mb-2">Quick Quiz</h3>
+              <h3 className="text-lg font-semibold mb-2 text-slate-900">
+                Exercise Check {hasQuizPassed ? '✓' : ''}
+              </h3>
+              {!isExerciseUnlocked && (
+                <p className="mb-3 text-sm font-semibold text-amber-700">
+                  Read Lesson 1 first. Then this exercise check will unlock.
+                </p>
+              )}
               <p className="text-gray-800 mb-3">{lessonQuiz.question}</p>
               <div className="space-y-2">
                 {lessonQuiz.options.map((option, index) => (
@@ -526,6 +561,7 @@ export default function LessonDetailPage() {
                       type="radio"
                       name="lesson-quiz"
                       checked={selectedQuizOption === index}
+                      disabled={!isExerciseUnlocked}
                       onChange={() => setSelectedQuizOption(index)}
                     />
                     <span>{option}</span>
@@ -534,7 +570,7 @@ export default function LessonDetailPage() {
               </div>
               <button
                 onClick={handleSubmitQuiz}
-                disabled={hasQuizPassed || selectedQuizOption === null}
+                disabled={hasQuizPassed || selectedQuizOption === null || !isExerciseUnlocked}
                 className="mt-3 px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {hasQuizPassed ? 'Quiz Passed' : 'Submit Quiz'}

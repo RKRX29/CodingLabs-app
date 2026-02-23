@@ -7,10 +7,10 @@ export type QuizQuestion = {
 
 export const pythonQuizzes: Record<number, QuizQuestion> = {
   1: {
-    question: 'Which function is used to print text in Python?',
-    options: ['echo()', 'print()', 'show()', 'write()'],
+    question: 'Python is mainly used to ____ to computers.',
+    options: ['paint screens', 'give instructions', 'repair hardware', 'format disks'],
     correctIndex: 1,
-    explanation: 'Python uses print() to display output.'
+    explanation: 'Python is a programming language used to give instructions to computers.'
   },
   2: {
     question: 'Which of these is a valid boolean value in Python?',

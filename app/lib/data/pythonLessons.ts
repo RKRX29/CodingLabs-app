@@ -3,9 +3,9 @@ export const pythonLessons = [
     courseId: 'python',
     lessonNumber: 1,
     title: 'Getting Started with Python',
-    description: 'Install Python, run your first program, and understand how Python executes code.',
+    description: 'What is Python, why it is useful, and how your first program works.',
     content:
-      "Python is a beginner-friendly programming language used for web development, automation, data science, and AI.\n\nYour first Python program:\nprint('Hello, world!')",
+      "What is Python?\nPython is a beginner-friendly programming language used to give instructions to computers.\n\nIt is widely used for web development, automation, data science, and AI.\n\nYour first Python program:\nprint('Hello, world!')",
     codeExample: "print('Hello, world!')",
     exercise: "Write a program that prints: Welcome to CodingLabs",
     expectedOutput: 'Welcome to CodingLabs'
@@ -13,7 +13,7 @@ export const pythonLessons = [
   {
     courseId: 'python',
     lessonNumber: 2,
-    title: 'Variables and Data Types',
+    title: 'More About Python',
     description: 'Learn how to store values in variables and work with common data types.',
     content:
       'Python supports numbers, strings, booleans, lists, and more.\n\nExamples:\nname = "Rahul"\nage = 21\nis_student = True',
