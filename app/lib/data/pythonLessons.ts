@@ -65,5 +65,65 @@ export const pythonLessons = [
     codeExample: 'def add(a, b):\n    return a + b\n\nprint(add(3, 4))',
     exercise: 'Write a function square(n) that returns n*n.',
     expectedOutput: 'square(5) => 25'
+  },
+  {
+    courseId: 'python',
+    lessonNumber: 7,
+    title: 'Lists and Tuples',
+    description: 'Store multiple values, access items, and understand mutable vs immutable sequences.',
+    content:
+      'Lists are ordered and mutable. Tuples are ordered and immutable.\n\nUse indexing to access values and slicing to get parts.',
+    codeExample:
+      'fruits = ["apple", "banana", "cherry"]\nprint(fruits[1])\nfruits.append("mango")\nprint(fruits)\n\npoint = (10, 20)\nprint(point[0])',
+    exercise: 'Create a list of 3 numbers and print their sum.',
+    expectedOutput: 'Sum of all list numbers'
+  },
+  {
+    courseId: 'python',
+    lessonNumber: 8,
+    title: 'Dictionaries and Sets',
+    description: 'Work with key-value mappings and unique collections.',
+    content:
+      'Dictionaries store data as key-value pairs. Sets store unique values only.\n\nBoth are very useful for fast lookups.',
+    codeExample:
+      'student = {"name": "Rahul", "age": 21}\nprint(student["name"])\nstudent["city"] = "Delhi"\n\nnums = {1, 2, 2, 3}\nprint(nums)',
+    exercise: 'Create a dictionary for a book with title and price, then print the title.',
+    expectedOutput: 'Book title printed'
+  },
+  {
+    courseId: 'python',
+    lessonNumber: 9,
+    title: 'String Operations',
+    description: 'Format, transform, and analyze text effectively.',
+    content:
+      'Strings support many methods like lower(), upper(), split(), replace(), and strip().\n\nf-strings are the recommended way to format text.',
+    codeExample:
+      'name = "codinglabs"\nprint(name.upper())\nmsg = f"Welcome, {name.title()}!"\nprint(msg)\nprint("python,js,java".split(","))',
+    exercise: 'Take a name and print: Hello, <Name>! using an f-string.',
+    expectedOutput: 'Hello, Rahul!'
+  },
+  {
+    courseId: 'python',
+    lessonNumber: 10,
+    title: 'Error Handling (try/except)',
+    description: 'Prevent crashes and handle runtime errors gracefully.',
+    content:
+      'Use try/except to catch errors and continue execution.\n\nYou can handle specific exception types like ValueError or ZeroDivisionError.',
+    codeExample:
+      'try:\n    num = int("abc")\nexcept ValueError:\n    print("Invalid number input")',
+    exercise: 'Write code that divides two numbers and handles division by zero.',
+    expectedOutput: 'Friendly error message for zero division'
+  },
+  {
+    courseId: 'python',
+    lessonNumber: 11,
+    title: 'File Handling',
+    description: 'Read and write files using Python safely.',
+    content:
+      'Use open() with modes like "r", "w", and "a".\n\nPrefer "with open(...)" so files close automatically.',
+    codeExample:
+      'with open("notes.txt", "w") as f:\n    f.write("Hello from CodingLabs")\n\nwith open("notes.txt", "r") as f:\n    print(f.read())',
+    exercise: 'Write "Python Practice" to a file and then read it back.',
+    expectedOutput: 'Python Practice'
   }
 ]

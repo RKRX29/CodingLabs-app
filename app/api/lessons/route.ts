@@ -16,10 +16,17 @@ export async function GET(req: Request) {
 
     let lessons = await Lesson.find({ courseId }).sort({ lessonNumber: 1 })
 
-    // Seed starter Python lessons once when the course is empty.
-    if (courseId === 'python' && lessons.length === 0) {
-      await Lesson.insertMany(pythonLessons)
-      lessons = await Lesson.find({ courseId }).sort({ lessonNumber: 1 })
+    // Keep Python starter content in sync by inserting any missing lesson numbers.
+    if (courseId === 'python') {
+      const existingLessonNumbers = new Set(lessons.map((lesson: any) => lesson.lessonNumber))
+      const missingLessons = pythonLessons.filter(
+        lesson => !existingLessonNumbers.has(lesson.lessonNumber)
+      )
+
+      if (missingLessons.length > 0) {
+        await Lesson.insertMany(missingLessons)
+        lessons = await Lesson.find({ courseId }).sort({ lessonNumber: 1 })
+      }
     }
 
     return NextResponse.json({ lessons })
