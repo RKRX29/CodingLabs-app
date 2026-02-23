@@ -82,7 +82,7 @@ export default function PythonCoursePage() {
           <h1 className="text-3xl font-bold">Python Course</h1>
           <Link
             href="/dashboard"
-            className="rounded-lg border border-slate-200 bg-slate-900 px-4 py-2 text-base font-semibold text-white shadow-sm hover:bg-slate-800"
+            className="inline-flex min-w-52 items-center justify-center rounded-lg border border-blue-200 bg-white/95 px-5 py-2.5 text-base font-bold !text-slate-900 shadow-sm transition hover:bg-blue-50"
           >
             Back to Dashboard
           </Link>
