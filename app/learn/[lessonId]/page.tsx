@@ -100,7 +100,7 @@ export default function LessonDetailPage() {
         )
         const firstLessonUnlockedFromProgress =
           selectedLesson.lessonNumber === 1 &&
-          Boolean(currentProgress?.completed || currentProgress?.quizPassed || currentProgress?.codePassed)
+          Boolean(currentProgress?.completed || currentProgress?.codePassed)
 
         setLesson(selectedLesson)
         setCode(selectedLesson.codeExample || '')
@@ -134,19 +134,48 @@ export default function LessonDetailPage() {
     setSaveMessage('')
     try {
       const nextCompleted = !isCompleted
+      const isFirstLessonModuleView = isFirstLesson && firstLessonView === 'menu'
+      const isFirstLessonLessonView = isFirstLesson && firstLessonView === 'lesson'
+      const isFirstLessonExerciseView = isFirstLesson && firstLessonView === 'exercise'
+
+      let payload: Record<string, unknown> = {
+        courseId: 'python',
+        lessonId: lesson._id
+      }
+
+      if (isFirstLessonModuleView) {
+        payload = {
+          ...payload,
+          completed: nextCompleted,
+          codePassed: nextCompleted,
+          quizPassed: nextCompleted
+        }
+      } else if (isFirstLessonLessonView) {
+        const nextRead = !hasReadLesson
+        payload = {
+          ...payload,
+          codePassed: nextRead,
+          completed: nextRead && hasQuizPassed
+        }
+      } else if (isFirstLessonExerciseView) {
+        const nextExercise = !hasQuizPassed
+        payload = {
+          ...payload,
+          quizPassed: nextExercise,
+          completed: hasReadLesson && nextExercise
+        }
+      } else {
+        payload = {
+          ...payload,
+          completed: nextCompleted,
+          ...(nextCompleted ? {} : { quizPassed: false, codePassed: false })
+        }
+      }
+
       const res = await fetch('/api/progress/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          courseId: 'python',
-          lessonId: lesson._id,
-          completed: nextCompleted,
-          ...(isFirstLesson
-            ? { quizPassed: nextCompleted, codePassed: nextCompleted }
-            : nextCompleted
-              ? {}
-              : { quizPassed: false, codePassed: false })
-        })
+        body: JSON.stringify(payload)
       })
       const data = await res.json()
 
@@ -155,22 +184,44 @@ export default function LessonDetailPage() {
         return
       }
 
-      setIsCompleted(nextCompleted)
-      if (isFirstLesson) {
+      if (isFirstLessonModuleView) {
+        setIsCompleted(nextCompleted)
         setHasReadLesson(nextCompleted)
         setHasQuizPassed(nextCompleted)
         setHasPassedAttempt(nextCompleted)
         setSelectedQuizOption(null)
         setQuizMessage('')
+      } else if (isFirstLessonLessonView) {
+        const nextRead = !hasReadLesson
+        setHasReadLesson(nextRead)
+        setHasPassedAttempt(nextRead)
+        setIsCompleted(nextRead && hasQuizPassed)
+      } else if (isFirstLessonExerciseView) {
+        const nextExercise = !hasQuizPassed
+        setHasQuizPassed(nextExercise)
+        setSelectedQuizOption(null)
+        setQuizMessage('')
+        setIsCompleted(hasReadLesson && nextExercise)
       } else if (!nextCompleted) {
+        setIsCompleted(nextCompleted)
         setHasQuizPassed(false)
         setHasPassedAttempt(false)
         setSelectedQuizOption(null)
         setQuizMessage('')
+      } else {
+        setIsCompleted(nextCompleted)
       }
       setCompletedLessonIds((prev) => {
         const next = new Set(prev)
-        if (nextCompleted) next.add(lesson._id)
+        const nextModuleCompleted =
+          isFirstLesson
+            ? (isFirstLessonModuleView
+                ? nextCompleted
+                : isFirstLessonLessonView
+                  ? (!hasReadLesson && hasQuizPassed)
+                  : (hasReadLesson && !hasQuizPassed))
+            : nextCompleted
+        if (nextModuleCompleted) next.add(lesson._id)
         else next.delete(lesson._id)
         return next
       })
@@ -315,7 +366,7 @@ export default function LessonDetailPage() {
   const lessonQuiz = lesson ? pythonQuizzes[lesson.lessonNumber] : undefined
   const isFirstLesson = lesson?.lessonNumber === 1
   const isExerciseUnlocked = !isFirstLesson || hasReadLesson
-  const canCompleteCurrentLesson = isFirstLesson ? hasReadLesson : hasPassedAttempt && hasQuizPassed
+  const canCompleteCurrentLesson = isFirstLesson ? (firstLessonView === 'exercise' ? hasReadLesson : true) : hasPassedAttempt && hasQuizPassed
   const showFirstLessonMenu = isFirstLesson && firstLessonView === 'menu'
   const showLessonTheory = !isFirstLesson || firstLessonView === 'lesson'
   const showExerciseView = !isFirstLesson || firstLessonView === 'exercise'
@@ -446,7 +497,6 @@ export default function LessonDetailPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setHasReadLesson(true)
                   setFirstLessonView('lesson')
                 }}
                 className="relative w-full rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4 text-left hover:bg-cyan-100"
@@ -457,10 +507,12 @@ export default function LessonDetailPage() {
                   </span>
                 )}
                 <p className="text-xs font-bold text-cyan-700">Lesson Item</p>
-                <p className="mt-1 text-2xl leading-none">🗒️</p>
-                <p className="text-lg font-bold text-slate-900">
-                  Lesson 1.1: What is Python
-                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-lg leading-none" aria-hidden>
+                    📘
+                  </span>
+                  <p className="text-lg font-bold text-slate-900">Lesson 1.1: What is Python</p>
+                </div>
                 <p className="text-sm text-slate-600 mt-1">Click to open lesson theory.</p>
               </button>
               <button
@@ -475,9 +527,12 @@ export default function LessonDetailPage() {
                   </span>
                 )}
                 <p className="text-xs font-bold text-pink-700">Exercise Item</p>
-                <p className="text-lg font-bold text-slate-900">
-                  Exercise 1.1: What is Python
-                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-lg leading-none" aria-hidden>
+                    🧩
+                  </span>
+                  <p className="text-lg font-bold text-slate-900">Exercise 1.1: What is Python</p>
+                </div>
                 <p className="text-sm text-slate-600 mt-1">
                   {hasReadLesson ? 'Click to open exercise.' : 'Read Lesson 1.1 first to unlock.'}
                 </p>
