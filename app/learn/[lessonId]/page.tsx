@@ -305,7 +305,7 @@ export default function LessonDetailPage() {
   const lessonQuiz = lesson ? pythonQuizzes[lesson.lessonNumber] : undefined
   const isFirstLesson = lesson?.lessonNumber === 1
   const isExerciseUnlocked = !isFirstLesson || hasReadLesson
-  const canCompleteCurrentLesson = isFirstLesson ? hasQuizPassed : hasPassedAttempt && hasQuizPassed
+  const canCompleteCurrentLesson = isFirstLesson ? hasReadLesson : hasPassedAttempt && hasQuizPassed
   const showFirstLessonMenu = isFirstLesson && firstLessonView === 'menu'
   const showLessonTheory = !isFirstLesson || firstLessonView === 'lesson'
   const showExerciseView = !isFirstLesson || firstLessonView === 'exercise'
@@ -655,7 +655,7 @@ export default function LessonDetailPage() {
             {!isCompleted && !canCompleteCurrentLesson && (
               <p className="mt-2 text-sm text-amber-700">
                 {isFirstLesson
-                  ? 'Complete Exercise 1.1 before marking this lesson complete.'
+                  ? 'Open Lesson 1.1 before marking this lesson complete.'
                   : 'Pass both code check and quiz before marking complete.'}
               </p>
             )}
