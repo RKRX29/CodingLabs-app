@@ -307,17 +307,23 @@ export default function LessonDetailPage() {
     setHasQuizPassed(true)
     setQuizMessage(`Correct. ${lessonQuiz.explanation}`)
 
+    // Lesson 1 uses a single-question exercise flow; treat a correct quiz as exercise completion.
+    if (isFirstLesson) {
+      setHasPassedAttempt(true)
+    }
+
     await fetch('/api/progress/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         courseId: 'python',
         lessonId: lesson._id,
-        quizPassed: true
+        quizPassed: true,
+        ...(isFirstLesson ? { codePassed: true } : {})
       })
     })
 
-    if (hasPassedAttempt && !isCompleted) {
+    if ((hasPassedAttempt || isFirstLesson) && !isCompleted) {
       const completeRes = await fetch('/api/progress/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -410,16 +416,16 @@ export default function LessonDetailPage() {
           </div>
 
           {showFirstLessonMenu && (
-            <section
-              className="grid gap-3 md:grid-cols-2"
-            >
+            <section className="space-y-3">
               <button
                 type="button"
                 onClick={() => setFirstLessonView('lesson')}
                 className="w-full rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4 text-left hover:bg-cyan-100"
               >
                 <p className="text-xs font-bold text-cyan-700">Lesson Item</p>
-                <p className="text-lg font-bold text-slate-900">Lesson 1.1: What is Python</p>
+                <p className="text-lg font-bold text-slate-900">
+                  Lesson 1.1: What is Python {hasReadLesson ? '✓' : ''}
+                </p>
                 <p className="text-sm text-slate-600 mt-1">Click to open lesson theory.</p>
               </button>
               <button
@@ -429,7 +435,9 @@ export default function LessonDetailPage() {
                 className="w-full rounded-xl border border-pink-200 bg-pink-50 px-4 py-4 text-left hover:bg-pink-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <p className="text-xs font-bold text-pink-700">Exercise Item</p>
-                <p className="text-lg font-bold text-slate-900">Exercise 1.1: What is Python</p>
+                <p className="text-lg font-bold text-slate-900">
+                  Exercise 1.1: What is Python {hasQuizPassed ? '✓' : ''}
+                </p>
                 <p className="text-sm text-slate-600 mt-1">
                   {hasReadLesson ? 'Click to open exercise.' : 'Read Lesson 1.1 first to unlock.'}
                 </p>
@@ -478,7 +486,7 @@ export default function LessonDetailPage() {
             </section>
           )}
 
-          {showExerciseView && lesson?.codeExample && (
+          {showExerciseView && !isFirstLesson && lesson?.codeExample && (
             <section className={isFirstLesson ? 'rounded-xl border border-indigo-200 bg-indigo-50/70 p-4' : ''}>
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-slate-900">Code Example</h3>
@@ -492,7 +500,7 @@ export default function LessonDetailPage() {
             </section>
           )}
 
-          {showExerciseView && (lesson?.exercise || lesson?.expectedOutput) && (
+          {showExerciseView && !isFirstLesson && (lesson?.exercise || lesson?.expectedOutput) && (
             <section
               className={
                 isFirstLesson
@@ -525,14 +533,18 @@ export default function LessonDetailPage() {
           {showExerciseView && lessonQuiz && (
             <section>
               <h3 className="text-lg font-semibold mb-2 text-slate-900">
-                Exercise Check {hasQuizPassed ? '(Passed)' : ''}
+                {isFirstLesson ? 'Exercise 1.1 Check' : 'Exercise Check'} {hasQuizPassed ? '✓' : ''}
               </h3>
               {!isExerciseUnlocked && (
                 <p className="mb-3 text-sm font-semibold text-amber-700">
                   Read Lesson 1 first. Then this exercise check will unlock.
                 </p>
               )}
-              <p className="text-gray-800 mb-3">{lessonQuiz.question}</p>
+              <p className="text-gray-800 mb-3">
+                {isFirstLesson
+                  ? 'Question: Python is mainly used to ____ to computers.'
+                  : lessonQuiz.question}
+              </p>
               <div className="space-y-2">
                 {lessonQuiz.options.map((option, index) => (
                   <label key={option} className="flex items-center gap-2 text-sm text-gray-800">
@@ -558,7 +570,7 @@ export default function LessonDetailPage() {
             </section>
           )}
 
-          {showExerciseView && (
+          {showExerciseView && !isFirstLesson && (
           <section className={isFirstLesson ? 'rounded-xl border border-blue-200 bg-white/80 p-4' : ''}>
             <h3 className="text-lg font-semibold mb-2 text-slate-900">
               {isFirstLesson ? 'Try It Yourself (Interactive Python Lab)' : 'Try It Yourself (Python)'}
@@ -632,7 +644,9 @@ export default function LessonDetailPage() {
             {saveMessage && <p className="mt-2 text-sm text-gray-700">{saveMessage}</p>}
             {!isCompleted && (!hasPassedAttempt || !hasQuizPassed) && (
               <p className="mt-2 text-sm text-amber-700">
-                Pass both code check and quiz before marking complete.
+                {isFirstLesson
+                  ? 'Complete Exercise 1.1 before marking this lesson complete.'
+                  : 'Pass both code check and quiz before marking complete.'}
               </p>
             )}
           </section>
