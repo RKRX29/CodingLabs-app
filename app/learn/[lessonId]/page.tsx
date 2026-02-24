@@ -95,18 +95,26 @@ export default function LessonDetailPage() {
         const locked = !!previousLesson && !completedIds.has(previousLesson._id)
         setIsLocked(locked)
 
-        setLesson(selectedLesson)
-        setCode(selectedLesson.codeExample || '')
-        setHasReadLesson(selectedLesson.lessonNumber !== 1)
-        setFirstLessonView(selectedLesson.lessonNumber === 1 ? 'menu' : 'exercise')
-        setSelectedQuizOption(null)
-        setQuizMessage('')
         const currentProgress = (progressData.progress || []).find(
           (item: ProgressItem) => item.lessonId === params.lessonId
         )
+        const firstLessonUnlockedFromProgress =
+          selectedLesson.lessonNumber === 1 &&
+          Boolean(currentProgress?.completed || currentProgress?.quizPassed || currentProgress?.codePassed)
+
+        setLesson(selectedLesson)
+        setCode(selectedLesson.codeExample || '')
+        setHasReadLesson(selectedLesson.lessonNumber !== 1 || firstLessonUnlockedFromProgress)
+        setFirstLessonView(selectedLesson.lessonNumber === 1 ? 'menu' : 'exercise')
+        setSelectedQuizOption(null)
+        setQuizMessage('')
         setIsCompleted(Boolean(currentProgress?.completed))
         setHasQuizPassed(Boolean(currentProgress?.quizPassed))
-        setHasPassedAttempt(Boolean(currentProgress?.codePassed))
+        setHasPassedAttempt(
+          selectedLesson.lessonNumber === 1
+            ? Boolean(currentProgress?.codePassed || currentProgress?.quizPassed)
+            : Boolean(currentProgress?.codePassed)
+        )
 
       } catch {
         setError('Network error while loading lesson')
@@ -120,7 +128,7 @@ export default function LessonDetailPage() {
 
   const handleToggleComplete = async () => {
     if (!lesson) return
-    if (!isCompleted && (!hasPassedAttempt || !hasQuizPassed)) return
+    if (!isCompleted && !canCompleteCurrentLesson) return
 
     setIsSaving(true)
     setSaveMessage('')
@@ -297,6 +305,7 @@ export default function LessonDetailPage() {
   const lessonQuiz = lesson ? pythonQuizzes[lesson.lessonNumber] : undefined
   const isFirstLesson = lesson?.lessonNumber === 1
   const isExerciseUnlocked = !isFirstLesson || hasReadLesson
+  const canCompleteCurrentLesson = isFirstLesson ? hasQuizPassed : hasPassedAttempt && hasQuizPassed
   const showFirstLessonMenu = isFirstLesson && firstLessonView === 'menu'
   const showLessonTheory = !isFirstLesson || firstLessonView === 'lesson'
   const showExerciseView = !isFirstLesson || firstLessonView === 'exercise'
@@ -637,13 +646,13 @@ export default function LessonDetailPage() {
           <section className="pt-2">
             <button
               onClick={handleToggleComplete}
-              disabled={isSaving || (!isCompleted && (!hasPassedAttempt || !hasQuizPassed))}
+              disabled={isSaving || (!isCompleted && !canCompleteCurrentLesson)}
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isSaving ? 'Saving...' : isCompleted ? 'Mark as Incomplete' : 'Mark as Complete'}
             </button>
             {saveMessage && <p className="mt-2 text-sm text-gray-700">{saveMessage}</p>}
-            {!isCompleted && (!hasPassedAttempt || !hasQuizPassed) && (
+            {!isCompleted && !canCompleteCurrentLesson && (
               <p className="mt-2 text-sm text-amber-700">
                 {isFirstLesson
                   ? 'Complete Exercise 1.1 before marking this lesson complete.'
