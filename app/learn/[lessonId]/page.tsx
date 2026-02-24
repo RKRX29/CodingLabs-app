@@ -132,7 +132,8 @@ export default function LessonDetailPage() {
         body: JSON.stringify({
           courseId: 'python',
           lessonId: lesson._id,
-          completed: nextCompleted
+          completed: nextCompleted,
+          ...(nextCompleted ? {} : { quizPassed: false, codePassed: false })
         })
       })
       const data = await res.json()
@@ -143,6 +144,12 @@ export default function LessonDetailPage() {
       }
 
       setIsCompleted(nextCompleted)
+      if (!nextCompleted) {
+        setHasQuizPassed(false)
+        setHasPassedAttempt(false)
+        setSelectedQuizOption(null)
+        setQuizMessage('')
+      }
       setCompletedLessonIds((prev) => {
         const next = new Set(prev)
         if (nextCompleted) next.add(lesson._id)
@@ -419,7 +426,10 @@ export default function LessonDetailPage() {
             <section className="space-y-3">
               <button
                 type="button"
-                onClick={() => setFirstLessonView('lesson')}
+                onClick={() => {
+                  setHasReadLesson(true)
+                  setFirstLessonView('lesson')
+                }}
                 className="w-full rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4 text-left hover:bg-cyan-100"
               >
                 <p className="text-xs font-bold text-cyan-700">Lesson Item</p>
@@ -451,15 +461,6 @@ export default function LessonDetailPage() {
                 <h3 className="text-lg font-semibold text-slate-900">
                   {isFirstLesson ? 'Lesson 1.1: What is Python' : 'Concept'}
                 </h3>
-                {isFirstLesson && (
-                  <button
-                    type="button"
-                    onClick={() => setHasReadLesson(true)}
-                    className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-cyan-700"
-                  >
-                    {hasReadLesson ? 'Read Complete' : 'Mark as Read'}
-                  </button>
-                )}
               </div>
               <p className="whitespace-pre-line text-gray-800">{lesson?.content}</p>
               {isFirstLesson && (
