@@ -141,7 +141,11 @@ export default function LessonDetailPage() {
           courseId: 'python',
           lessonId: lesson._id,
           completed: nextCompleted,
-          ...(nextCompleted ? {} : { quizPassed: false, codePassed: false })
+          ...(isFirstLesson
+            ? { quizPassed: nextCompleted, codePassed: nextCompleted }
+            : nextCompleted
+              ? {}
+              : { quizPassed: false, codePassed: false })
         })
       })
       const data = await res.json()
@@ -152,7 +156,13 @@ export default function LessonDetailPage() {
       }
 
       setIsCompleted(nextCompleted)
-      if (!nextCompleted) {
+      if (isFirstLesson) {
+        setHasReadLesson(nextCompleted)
+        setHasQuizPassed(nextCompleted)
+        setHasPassedAttempt(nextCompleted)
+        setSelectedQuizOption(null)
+        setQuizMessage('')
+      } else if (!nextCompleted) {
         setHasQuizPassed(false)
         setHasPassedAttempt(false)
         setSelectedQuizOption(null)
@@ -439,11 +449,17 @@ export default function LessonDetailPage() {
                   setHasReadLesson(true)
                   setFirstLessonView('lesson')
                 }}
-                className="w-full rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4 text-left hover:bg-cyan-100"
+                className="relative w-full rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4 text-left hover:bg-cyan-100"
               >
+                {hasReadLesson && (
+                  <span className="absolute right-3 top-3 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-white">
+                    ✓
+                  </span>
+                )}
                 <p className="text-xs font-bold text-cyan-700">Lesson Item</p>
+                <p className="mt-1 text-2xl leading-none">🗒️</p>
                 <p className="text-lg font-bold text-slate-900">
-                  Lesson 1.1: What is Python {hasReadLesson ? '✓' : ''}
+                  Lesson 1.1: What is Python
                 </p>
                 <p className="text-sm text-slate-600 mt-1">Click to open lesson theory.</p>
               </button>
@@ -451,11 +467,16 @@ export default function LessonDetailPage() {
                 type="button"
                 onClick={() => setFirstLessonView('exercise')}
                 disabled={!hasReadLesson}
-                className="w-full rounded-xl border border-pink-200 bg-pink-50 px-4 py-4 text-left hover:bg-pink-100 disabled:cursor-not-allowed disabled:opacity-60"
+                className="relative w-full rounded-xl border border-pink-200 bg-pink-50 px-4 py-4 text-left hover:bg-pink-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
+                {hasQuizPassed && (
+                  <span className="absolute right-3 top-3 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-white">
+                    ✓
+                  </span>
+                )}
                 <p className="text-xs font-bold text-pink-700">Exercise Item</p>
                 <p className="text-lg font-bold text-slate-900">
-                  Exercise 1.1: What is Python {hasQuizPassed ? '✓' : ''}
+                  Exercise 1.1: What is Python
                 </p>
                 <p className="text-sm text-slate-600 mt-1">
                   {hasReadLesson ? 'Click to open exercise.' : 'Read Lesson 1.1 first to unlock.'}
