@@ -98,10 +98,7 @@ export default function PythonCoursePage() {
 
         {!loading && !error && lessons.length > 0 && (
           <div className="grid gap-4">
-            {lessons.map((lesson, index) => {
-              const isLocked =
-                index > 0 && !completedIds.has(lessons[index - 1]?._id)
-
+            {lessons.map((lesson) => {
               return (
               <article key={lesson._id} className="bg-white/90 border rounded-lg p-6 shadow-sm backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-1">
@@ -114,21 +111,12 @@ export default function PythonCoursePage() {
                 </div>
                 <h2 className="text-xl font-bold mb-2">{lesson.title}</h2>
                 <p className="text-gray-700 mb-4">{lesson.description}</p>
-                {isLocked ? (
-                  <button
-                    disabled
-                    className="inline-block px-4 py-2 bg-gray-300 text-gray-600 rounded cursor-not-allowed"
-                  >
-                    Locked
-                  </button>
-                ) : (
-                  <Link
-                    href={`/learn/${lesson._id}`}
-                    className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    Open Lesson
-                  </Link>
-                )}
+                <Link
+                  href={`/learn/${lesson._id}`}
+                  className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Open Lesson
+                </Link>
               </article>
               )
             })}
