@@ -381,11 +381,6 @@ export default function LessonDetailPage() {
       })
       if (completeRes.ok) {
         setIsCompleted(true)
-        setCompletedLessonIds((prev) => {
-          const next = new Set(prev)
-          next.add(lesson._id)
-          return next
-        })
         setSaveMessage('Code + quiz passed. Auto-marked as complete.')
       }
     }
