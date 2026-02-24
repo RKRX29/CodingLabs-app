@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { pythonQuizzes } from '@/app/lib/data/pythonQuizzes'
 
@@ -23,88 +23,75 @@ type ProgressItem = {
   quizPassed?: boolean
 }
 
+type RunResult = {
+  stdout?: string | null
+  stderr?: string | null
+  compile_output?: string | null
+  message?: string | null
+  status?: { id: number; description: string }
+  time?: string
+  memory?: number
+}
+
+type SubView = 'menu' | 'lesson' | 'exercise'
+
 export default function LessonDetailPage() {
+  const params = useParams<{ lessonId: string }>()
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [allLessons, setAllLessons] = useState<Lesson[]>([])
-  const [isLocked, setIsLocked] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [isCompleted, setIsCompleted] = useState(false)
+
+  const [subView, setSubView] = useState<SubView>('menu')
+  const [lessonDone, setLessonDone] = useState(false)
+  const [exerciseDone, setExerciseDone] = useState(false)
+  const [moduleDone, setModuleDone] = useState(false)
+
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+
   const [code, setCode] = useState('')
   const [stdin, setStdin] = useState('')
   const [isRunning, setIsRunning] = useState(false)
-  const [runResult, setRunResult] = useState<{
-    stdout?: string | null
-    stderr?: string | null
-    compile_output?: string | null
-    message?: string | null
-    status?: { id: number; description: string }
-    time?: string
-    memory?: number
-  } | null>(null)
+  const [runResult, setRunResult] = useState<RunResult | null>(null)
   const [runError, setRunError] = useState('')
-  const [hasPassedAttempt, setHasPassedAttempt] = useState(false)
-  const [hasQuizPassed, setHasQuizPassed] = useState(false)
-  const [hasReadLesson, setHasReadLesson] = useState(false)
-  const [firstLessonView, setFirstLessonView] = useState<'menu' | 'lesson' | 'exercise'>('menu')
+
   const [selectedQuizOption, setSelectedQuizOption] = useState<number | null>(null)
   const [quizMessage, setQuizMessage] = useState('')
-  const params = useParams<{ lessonId: string }>()
 
   useEffect(() => {
-    const fetchLesson = async () => {
+    const fetchData = async () => {
       try {
         const [lessonsRes, progressRes] = await Promise.all([
           fetch('/api/lessons?courseId=python'),
           fetch('/api/progress?courseId=python')
         ])
-
         const lessonsData = await lessonsRes.json()
         const progressData = await progressRes.json()
 
-        if (!lessonsRes.ok) {
-          setError(lessonsData.error || 'Failed to load lesson')
-          return
-        }
-        if (!progressRes.ok) {
-          setError(progressData.error || 'Failed to load progress')
+        if (!lessonsRes.ok || !progressRes.ok) {
+          setError(lessonsData.error || progressData.error || 'Failed to load lesson')
           return
         }
 
-        const orderedLessons = (lessonsData.lessons || []).slice().sort((a: Lesson, b: Lesson) => a.lessonNumber - b.lessonNumber)
-        setAllLessons(orderedLessons)
-
-        const selectedLesson = orderedLessons.find((item: Lesson) => item._id === params.lessonId)
-        if (!selectedLesson) {
+        const ordered = (lessonsData.lessons || []).slice().sort((a: Lesson, b: Lesson) => a.lessonNumber - b.lessonNumber)
+        setAllLessons(ordered)
+        const selected = ordered.find((item: Lesson) => item._id === params.lessonId)
+        if (!selected) {
           setError('Lesson not found')
           return
         }
 
-        setIsLocked(false)
+        const progress = (progressData.progress || []).find((item: ProgressItem) => item.lessonId === params.lessonId)
 
-        const currentProgress = (progressData.progress || []).find(
-          (item: ProgressItem) => item.lessonId === params.lessonId
-        )
-        const firstLessonUnlockedFromProgress =
-          selectedLesson.lessonNumber === 1 &&
-          Boolean(currentProgress?.completed || currentProgress?.codePassed)
-
-        setLesson(selectedLesson)
-        setCode(selectedLesson.codeExample || '')
-        setHasReadLesson(selectedLesson.lessonNumber !== 1 || firstLessonUnlockedFromProgress)
-        setFirstLessonView(selectedLesson.lessonNumber === 1 ? 'menu' : 'exercise')
+        setLesson(selected)
+        setCode(selected.codeExample || '')
+        setSubView('menu')
         setSelectedQuizOption(null)
         setQuizMessage('')
-        setIsCompleted(Boolean(currentProgress?.completed))
-        setHasQuizPassed(Boolean(currentProgress?.quizPassed))
-        setHasPassedAttempt(
-          selectedLesson.lessonNumber === 1
-            ? Boolean(currentProgress?.codePassed || currentProgress?.quizPassed)
-            : Boolean(currentProgress?.codePassed)
-        )
-
+        setLessonDone(Boolean(progress?.codePassed))
+        setExerciseDone(Boolean(progress?.quizPassed))
+        setModuleDone(Boolean(progress?.completed))
       } catch {
         setError('Network error while loading lesson')
       } finally {
@@ -112,101 +99,17 @@ export default function LessonDetailPage() {
       }
     }
 
-    fetchLesson()
+    fetchData()
   }, [params.lessonId])
 
-  const handleToggleComplete = async () => {
-    if (!lesson) return
-    if (!isCompleted && !canCompleteCurrentLesson) return
-
-    setIsSaving(true)
-    setSaveMessage('')
-    try {
-      const nextCompleted = !isCompleted
-      const isFirstLessonModuleView = isFirstLesson && firstLessonView === 'menu'
-      const isFirstLessonLessonView = isFirstLesson && firstLessonView === 'lesson'
-      const isFirstLessonExerciseView = isFirstLesson && firstLessonView === 'exercise'
-
-      let payload: Record<string, unknown> = {
-        courseId: 'python',
-        lessonId: lesson._id
-      }
-
-      if (isFirstLessonModuleView) {
-        payload = {
-          ...payload,
-          completed: nextCompleted,
-          codePassed: nextCompleted,
-          quizPassed: nextCompleted
-        }
-      } else if (isFirstLessonLessonView) {
-        const nextRead = !hasReadLesson
-        payload = {
-          ...payload,
-          codePassed: nextRead,
-          completed: nextRead && hasQuizPassed
-        }
-      } else if (isFirstLessonExerciseView) {
-        const nextExercise = !hasQuizPassed
-        payload = {
-          ...payload,
-          quizPassed: nextExercise,
-          completed: hasReadLesson && nextExercise
-        }
-      } else {
-        payload = {
-          ...payload,
-          completed: nextCompleted,
-          ...(nextCompleted ? {} : { quizPassed: false, codePassed: false })
-        }
-      }
-
-      const res = await fetch('/api/progress/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        setSaveMessage(data.error || 'Failed to save progress')
-        return
-      }
-
-      if (isFirstLessonModuleView) {
-        setIsCompleted(nextCompleted)
-        setHasReadLesson(nextCompleted)
-        setHasQuizPassed(nextCompleted)
-        setHasPassedAttempt(nextCompleted)
-        setSelectedQuizOption(null)
-        setQuizMessage('')
-      } else if (isFirstLessonLessonView) {
-        const nextRead = !hasReadLesson
-        setHasReadLesson(nextRead)
-        setHasPassedAttempt(nextRead)
-        setIsCompleted(nextRead && hasQuizPassed)
-      } else if (isFirstLessonExerciseView) {
-        const nextExercise = !hasQuizPassed
-        setHasQuizPassed(nextExercise)
-        setSelectedQuizOption(null)
-        setQuizMessage('')
-        setIsCompleted(hasReadLesson && nextExercise)
-      } else if (!nextCompleted) {
-        setIsCompleted(nextCompleted)
-        setHasQuizPassed(false)
-        setHasPassedAttempt(false)
-        setSelectedQuizOption(null)
-        setQuizMessage('')
-      } else {
-        setIsCompleted(nextCompleted)
-      }
-      setSaveMessage(nextCompleted ? 'Lesson marked as complete.' : 'Lesson marked as incomplete.')
-    } catch {
-      setSaveMessage('Network error while saving progress')
-    } finally {
-      setIsSaving(false)
-    }
-  }
+  const currentIndex = useMemo(
+    () => allLessons.findIndex((item) => item._id === lesson?._id),
+    [allLessons, lesson?._id]
+  )
+  const previousLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null
+  const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
+  const lessonQuiz = lesson ? pythonQuizzes[lesson.lessonNumber] : undefined
+  const currentSubCompleted = subView === 'menu' ? moduleDone : subView === 'lesson' ? lessonDone : exerciseDone
 
   const normalizeOutput = (value?: string | null) => (value || '').replace(/\r\n/g, '\n').trim()
 
@@ -218,13 +121,81 @@ export default function LessonDetailPage() {
     if (expectedOutput && normalizeOutput(expectedOutput).length > 0) {
       return normalizeOutput(output) === normalizeOutput(expectedOutput)
     }
-
     return statusDescription === 'Accepted'
+  }
+
+  const saveProgress = async (payload: Record<string, unknown>) => {
+    const res = await fetch('/api/progress/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        courseId: 'python',
+        lessonId: lesson?._id,
+        ...payload
+      })
+    })
+    return res
+  }
+
+  const handleToggleComplete = async () => {
+    if (!lesson) return
+    setIsSaving(true)
+    setSaveMessage('')
+    try {
+      if (subView === 'menu') {
+        const next = !moduleDone
+        const res = await saveProgress({ completed: next, codePassed: next, quizPassed: next })
+        if (!res.ok) {
+          const data = await res.json()
+          setSaveMessage(data.error || 'Failed to save progress')
+          return
+        }
+        setModuleDone(next)
+        setLessonDone(next)
+        setExerciseDone(next)
+        setSelectedQuizOption(null)
+        setQuizMessage('')
+        setSaveMessage(next ? 'Module marked complete.' : 'Module marked incomplete.')
+        return
+      }
+
+      if (subView === 'lesson') {
+        const nextLessonDone = !lessonDone
+        const nextModuleDone = nextLessonDone && exerciseDone
+        const res = await saveProgress({ codePassed: nextLessonDone, completed: nextModuleDone })
+        if (!res.ok) {
+          const data = await res.json()
+          setSaveMessage(data.error || 'Failed to save progress')
+          return
+        }
+        setLessonDone(nextLessonDone)
+        setModuleDone(nextModuleDone)
+        setSaveMessage(nextLessonDone ? 'Lesson submodule marked complete.' : 'Lesson submodule marked incomplete.')
+        return
+      }
+
+      const nextExerciseDone = !exerciseDone
+      const nextModuleDone = lessonDone && nextExerciseDone
+      const res = await saveProgress({ quizPassed: nextExerciseDone, completed: nextModuleDone })
+      if (!res.ok) {
+        const data = await res.json()
+        setSaveMessage(data.error || 'Failed to save progress')
+        return
+      }
+      setExerciseDone(nextExerciseDone)
+      setModuleDone(nextModuleDone)
+      setSelectedQuizOption(null)
+      setQuizMessage('')
+      setSaveMessage(nextExerciseDone ? 'Exercise submodule marked complete.' : 'Exercise submodule marked incomplete.')
+    } catch {
+      setSaveMessage('Network error while saving progress')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleRunCode = async () => {
     if (!lesson) return
-
     if (!code.trim()) {
       setRunError('Please write some code before running.')
       setRunResult(null)
@@ -245,7 +216,6 @@ export default function LessonDetailPage() {
         })
       })
       const data = await res.json()
-
       if (!res.ok) {
         setRunError(data.error || 'Code execution failed')
         return
@@ -253,7 +223,6 @@ export default function LessonDetailPage() {
 
       setRunResult(data)
       const didPass = evaluatePass(data.stdout, data.status?.description, lesson.expectedOutput)
-      setHasPassedAttempt((prev) => prev || didPass)
 
       await fetch('/api/submissions/save', {
         method: 'POST',
@@ -268,42 +237,30 @@ export default function LessonDetailPage() {
           passed: didPass
         })
       })
-
-      if (didPass) {
-        await fetch('/api/progress/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            courseId: 'python',
-            lessonId: lesson._id,
-            codePassed: true
-          })
-        })
-      }
-
-      // Auto-complete only if both code and quiz are passed.
-      if (didPass && hasQuizPassed && !isCompleted) {
-        const completeRes = await fetch('/api/progress/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            courseId: 'python',
-            lessonId: lesson._id,
-            codePassed: true,
-            quizPassed: true,
-            completed: true
-          })
-        })
-        if (completeRes.ok) {
-          setIsCompleted(true)
-          setSaveMessage('Code + quiz passed. Auto-marked as complete.')
-        }
-      }
     } catch {
       setRunError('Network error while running code')
     } finally {
       setIsRunning(false)
     }
+  }
+
+  const handleSubmitQuiz = async () => {
+    if (!lesson || !lessonQuiz || selectedQuizOption === null) return
+    const isCorrect = selectedQuizOption === lessonQuiz.correctIndex
+    if (!isCorrect) {
+      setQuizMessage('Incorrect. Try again.')
+      return
+    }
+
+    setExerciseDone(true)
+    const nextModuleDone = lessonDone && true
+    setModuleDone(nextModuleDone)
+    setQuizMessage(`Correct. ${lessonQuiz.explanation}`)
+
+    await saveProgress({
+      quizPassed: true,
+      completed: nextModuleDone
+    })
   }
 
   if (loading) {
@@ -323,69 +280,6 @@ export default function LessonDetailPage() {
     )
   }
 
-  const currentIndex = allLessons.findIndex((item) => item._id === lesson?._id)
-  const previousLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null
-  const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
-  const canAccessLesson = (targetLesson: Lesson, targetIndex: number) => {
-    return targetIndex >= 0 && !!targetLesson
-  }
-
-  const lessonQuiz = lesson ? pythonQuizzes[lesson.lessonNumber] : undefined
-  const isFirstLesson = lesson?.lessonNumber === 1
-  const isExerciseUnlocked = true
-  const canCompleteCurrentLesson = isFirstLesson ? (firstLessonView === 'exercise' ? hasReadLesson : true) : hasPassedAttempt && hasQuizPassed
-  const showFirstLessonMenu = isFirstLesson && firstLessonView === 'menu'
-  const showLessonTheory = !isFirstLesson || firstLessonView === 'lesson'
-  const showExerciseView = !isFirstLesson || firstLessonView === 'exercise'
-
-  const handleSubmitQuiz = async () => {
-    if (!lesson || !lessonQuiz || selectedQuizOption === null) return
-    if (!isExerciseUnlocked) return
-
-    const isCorrect = selectedQuizOption === lessonQuiz.correctIndex
-    if (!isCorrect) {
-      setQuizMessage('Incorrect. Try again.')
-      return
-    }
-
-    setHasQuizPassed(true)
-    setQuizMessage(`Correct. ${lessonQuiz.explanation}`)
-
-    // Lesson 1 uses a single-question exercise flow; treat a correct quiz as exercise completion.
-    if (isFirstLesson) {
-      setHasPassedAttempt(true)
-    }
-
-    await fetch('/api/progress/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        courseId: 'python',
-        lessonId: lesson._id,
-        quizPassed: true,
-        ...(isFirstLesson ? { codePassed: true } : {})
-      })
-    })
-
-    if ((hasPassedAttempt || isFirstLesson) && !isCompleted) {
-      const completeRes = await fetch('/api/progress/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          courseId: 'python',
-          lessonId: lesson._id,
-          codePassed: true,
-          quizPassed: true,
-          completed: true
-        })
-      })
-      if (completeRes.ok) {
-        setIsCompleted(true)
-        setSaveMessage('Code + quiz passed. Auto-marked as complete.')
-      }
-    }
-  }
-
   return (
     <main className="min-h-screen bg-gray-50 p-8 text-gray-900">
       <div className="max-w-3xl mx-auto">
@@ -393,16 +287,8 @@ export default function LessonDetailPage() {
           <nav className="mb-4 p-3 bg-white border rounded-lg">
             <p className="text-sm text-gray-600 mb-2">Course Navigator</p>
             <div className="flex flex-wrap gap-2">
-              {allLessons.map((item, index) => {
+              {allLessons.map((item) => {
                 const isCurrent = item._id === lesson?._id
-                const available = canAccessLesson(item, index)
-                if (!available) {
-                  return (
-                    <span key={item._id} className="px-3 py-1 rounded text-sm bg-gray-200 text-gray-500">
-                      {item.lessonNumber}
-                    </span>
-                  )
-                }
                 return (
                   <Link
                     key={item._id}
@@ -428,42 +314,20 @@ export default function LessonDetailPage() {
           </Link>
         </div>
 
-        {isLocked ? (
-          <article className="bg-white border rounded-lg p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-2">Lesson Locked</h2>
-            <p className="text-gray-700 mb-4">Complete the previous lesson first to unlock this one.</p>
-            {previousLesson && (
-              <Link
-                href={`/learn/${previousLesson._id}`}
-                className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Go to Previous Lesson
-              </Link>
-            )}
-          </article>
-        ) : (
-        <article
-          className={
-            isFirstLesson
-              ? 'border border-fuchsia-200 bg-gradient-to-br from-white/95 via-rose-50/90 to-fuchsia-100/85 rounded-2xl p-6 shadow-md space-y-5'
-              : 'bg-white border rounded-lg p-6 shadow-sm space-y-5'
-          }
-        >
+        <article className="border border-fuchsia-200 bg-gradient-to-br from-white/95 via-rose-50/90 to-fuchsia-100/85 rounded-2xl p-6 shadow-md space-y-5">
           <div>
             <h2 className="text-2xl font-bold mb-2 text-slate-900">{lesson?.title}</h2>
             <p className="text-gray-700">{lesson?.description}</p>
           </div>
 
-          {showFirstLessonMenu && (
+          {subView === 'menu' && (
             <section className="space-y-3">
               <button
                 type="button"
-                onClick={() => {
-                  setFirstLessonView('lesson')
-                }}
+                onClick={() => setSubView('lesson')}
                 className="relative w-full rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4 text-left hover:bg-cyan-100"
               >
-                {hasReadLesson && (
+                {lessonDone && (
                   <span className="absolute right-3 top-3 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-white">
                     ✓
                   </span>
@@ -473,16 +337,17 @@ export default function LessonDetailPage() {
                   <span className="text-lg leading-none" aria-hidden>
                     📘
                   </span>
-                  <p className="text-lg font-bold text-slate-900">Lesson 1.1: What is Python</p>
+                  <p className="text-lg font-bold text-slate-900">Lesson {lesson?.lessonNumber}.1</p>
                 </div>
                 <p className="text-sm text-slate-600 mt-1">Click to open lesson theory.</p>
               </button>
+
               <button
                 type="button"
-                onClick={() => setFirstLessonView('exercise')}
+                onClick={() => setSubView('exercise')}
                 className="relative w-full rounded-xl border border-pink-200 bg-pink-50 px-4 py-4 text-left hover:bg-pink-100"
               >
-                {hasQuizPassed && (
+                {exerciseDone && (
                   <span className="absolute right-3 top-3 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-white">
                     ✓
                   </span>
@@ -492,205 +357,169 @@ export default function LessonDetailPage() {
                   <span className="text-lg leading-none" aria-hidden>
                     🧩
                   </span>
-                  <p className="text-lg font-bold text-slate-900">Exercise 1.1: What is Python</p>
+                  <p className="text-lg font-bold text-slate-900">Exercise {lesson?.lessonNumber}.1</p>
                 </div>
-                <p className="text-sm text-slate-600 mt-1">
-                  Click to open exercise.
-                </p>
+                <p className="text-sm text-slate-600 mt-1">Click to open exercise.</p>
               </button>
             </section>
           )}
 
-          {showLessonTheory && (
-            <section className={isFirstLesson ? 'rounded-xl border border-cyan-200 bg-cyan-50/80 p-4' : ''}>
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900">
-                  {isFirstLesson ? 'Lesson 1.1: What is Python' : 'Concept'}
-                </h3>
-              </div>
+          {subView === 'lesson' && (
+            <section className="rounded-xl border border-cyan-200 bg-cyan-50/80 p-4">
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Lesson {lesson?.lessonNumber}.1</h3>
               <p className="whitespace-pre-line text-gray-800">{lesson?.content}</p>
-              {isFirstLesson && (
-                <div className="mt-4 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFirstLessonView('menu')}
-                    className="rounded-lg bg-gray-200 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-300"
-                  >
-                    Go Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHasReadLesson(true)
-                      setFirstLessonView('exercise')
-                    }}
-                    className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"
-                  >
-                    Continue
-                  </button>
-                </div>
-              )}
-            </section>
-          )}
-
-          {showExerciseView && !isFirstLesson && lesson?.codeExample && (
-            <section className={isFirstLesson ? 'rounded-xl border border-indigo-200 bg-indigo-50/70 p-4' : ''}>
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900">Code Example</h3>
-                {isFirstLesson && (
-                  <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">Read + Try</span>
-                )}
+              <div className="mt-4 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSubView('menu')}
+                  className="rounded-lg bg-gray-200 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-300"
+                >
+                  Go Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLessonDone(true)
+                    setSubView('exercise')
+                  }}
+                  className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+                >
+                  Continue
+                </button>
               </div>
-              <pre className="bg-gray-900 text-gray-100 p-4 rounded overflow-x-auto text-sm border border-indigo-300">
-                <code>{lesson.codeExample}</code>
-              </pre>
             </section>
           )}
 
-          {showExerciseView && !isFirstLesson && (lesson?.exercise || lesson?.expectedOutput) && (
-            <section
-              className={
-                isFirstLesson
-                  ? 'grid gap-3 md:grid-cols-2'
-                  : 'space-y-3'
-              }
-            >
-              {lesson?.exercise && (
-                <div className={isFirstLesson ? 'rounded-xl border border-pink-200 bg-pink-50/80 p-4' : ''}>
-                  <h3 className="text-lg font-semibold mb-2 text-slate-900">
-                    Exercise {hasQuizPassed ? '(Passed)' : ''}
-                  </h3>
-                  {isExerciseUnlocked ? (
-                    <p className="text-gray-800">{lesson.exercise}</p>
-                  ) : (
-                    <p className="text-amber-700 font-semibold">Locked. Open Lesson 1.1 first to unlock.</p>
-                  )}
-                </div>
-              )}
-
-              {lesson?.expectedOutput && (
-                <div className={isFirstLesson ? 'rounded-xl border border-emerald-200 bg-emerald-50/80 p-4' : ''}>
-                  <h3 className="text-lg font-semibold mb-2 text-slate-900">Expected Output</h3>
-                  <p className="text-gray-800">{lesson.expectedOutput}</p>
-                </div>
-              )}
-            </section>
-          )}
-
-          {showExerciseView && lessonQuiz && (
-            <section>
-              <h3 className="text-lg font-semibold mb-2 text-slate-900">
-                {isFirstLesson ? 'Exercise 1.1 Check' : 'Exercise Check'} {hasQuizPassed ? '✓' : ''}
-              </h3>
-              <p className="text-gray-800 mb-3">
-                {isFirstLesson
-                  ? 'Question: Python is mainly used to ____ to computers.'
-                  : lessonQuiz.question}
-              </p>
-              <div className="space-y-2">
-                {lessonQuiz.options.map((option, index) => (
-                  <label key={option} className="flex items-center gap-2 text-sm text-gray-800">
-                    <input
-                      type="radio"
-                      name="lesson-quiz"
-                      checked={selectedQuizOption === index}
-                      disabled={!isExerciseUnlocked}
-                      onChange={() => setSelectedQuizOption(index)}
-                    />
-                    <span>{option}</span>
-                  </label>
-                ))}
-              </div>
-              <button
-                onClick={handleSubmitQuiz}
-                disabled={hasQuizPassed || selectedQuizOption === null || !isExerciseUnlocked}
-                className="mt-3 px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {hasQuizPassed ? 'Quiz Passed' : 'Submit Quiz'}
-              </button>
-              {quizMessage && <p className="mt-2 text-sm text-gray-700">{quizMessage}</p>}
-            </section>
-          )}
-
-          {showExerciseView && !isFirstLesson && (
-          <section className={isFirstLesson ? 'rounded-xl border border-blue-200 bg-white/80 p-4' : ''}>
-            <h3 className="text-lg font-semibold mb-2 text-slate-900">
-              {isFirstLesson ? 'Try It Yourself (Interactive Python Lab)' : 'Try It Yourself (Python)'}
-            </h3>
-            <textarea
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className="w-full h-56 p-3 rounded border bg-gray-950 text-gray-100 font-mono text-sm"
-              placeholder="Write your Python code here..."
-            />
-            <input
-              value={stdin}
-              onChange={(e) => setStdin(e.target.value)}
-              className="w-full mt-3 p-2 rounded border text-gray-900"
-              placeholder="Optional input (stdin)"
-            />
-            <button
-              onClick={handleRunCode}
-              disabled={isRunning}
-              className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isRunning ? 'Running...' : 'Run Code'}
-            </button>
-
-            {runError && <p className="mt-3 text-sm text-red-600">{runError}</p>}
-
-            {runResult && (
-              <div className="mt-4 bg-gray-100 rounded border p-4">
-                <p className="text-sm text-gray-700 mb-2">
-                  Status: <span className="font-semibold">{runResult.status?.description || 'Unknown'}</span>
-                </p>
-                <p className="text-sm text-gray-700 mb-2">
-                  Time: {runResult.time || '-'}s | Memory: {runResult.memory || '-'} KB
-                </p>
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">Output</p>
-                    <pre className="bg-white border rounded p-2 text-sm overflow-x-auto whitespace-pre-wrap">
-                      {runResult.stdout || '(no output)'}
-                    </pre>
+          {subView === 'exercise' && (
+            <>
+              {lesson?.codeExample && (
+                <section className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-slate-900">Code Example</h3>
+                    <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">Read + Try</span>
                   </div>
+                  <pre className="bg-gray-900 text-gray-100 p-4 rounded overflow-x-auto text-sm border border-indigo-300">
+                    <code>{lesson.codeExample}</code>
+                  </pre>
+                </section>
+              )}
 
-                  {(runResult.stderr || runResult.compile_output || runResult.message) && (
+              {(lesson?.exercise || lesson?.expectedOutput) && (
+                <section className="space-y-3">
+                  {lesson?.exercise && (
                     <div>
-                      <p className="text-sm font-semibold text-red-700">Errors</p>
-                      <pre className="bg-white border rounded p-2 text-sm overflow-x-auto whitespace-pre-wrap text-red-700">
-                        {runResult.stderr || runResult.compile_output || runResult.message}
-                      </pre>
+                      <h3 className="text-lg font-semibold mb-2 text-slate-900">Exercise {exerciseDone ? '(Passed)' : ''}</h3>
+                      <p className="text-gray-800">{lesson.exercise}</p>
                     </div>
                   )}
-                </div>
-                <p className="mt-3 text-sm font-semibold text-gray-800">
-                  Result Check:{' '}
-                  {evaluatePass(runResult.stdout, runResult.status?.description, lesson?.expectedOutput)
-                    ? 'Passed'
-                    : 'Not matched yet'}
-                </p>
-              </div>
-            )}
-          </section>
+                  {lesson?.expectedOutput && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2 text-slate-900">Expected Output</h3>
+                      <p className="text-gray-800">{lesson.expectedOutput}</p>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {lessonQuiz && (
+                <section>
+                  <h3 className="text-lg font-semibold mb-2 text-slate-900">
+                    Exercise {lesson?.lessonNumber}.1 Check {exerciseDone ? '✓' : ''}
+                  </h3>
+                  <p className="text-gray-800 mb-3">{lessonQuiz.question}</p>
+                  <div className="space-y-2">
+                    {lessonQuiz.options.map((option, index) => (
+                      <label key={option} className="flex items-center gap-2 text-sm text-gray-800">
+                        <input
+                          type="radio"
+                          name="lesson-quiz"
+                          checked={selectedQuizOption === index}
+                          onChange={() => setSelectedQuizOption(index)}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleSubmitQuiz}
+                    disabled={exerciseDone || selectedQuizOption === null}
+                    className="mt-3 px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {exerciseDone ? 'Quiz Passed' : 'Submit Quiz'}
+                  </button>
+                  {quizMessage && <p className="mt-2 text-sm text-gray-700">{quizMessage}</p>}
+                </section>
+              )}
+
+              <section className="rounded-xl border border-blue-200 bg-white/80 p-4">
+                <h3 className="text-lg font-semibold mb-2 text-slate-900">Try It Yourself (Python)</h3>
+                <textarea
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  className="w-full h-56 p-3 rounded border bg-gray-950 text-gray-100 font-mono text-sm"
+                  placeholder="Write your Python code here..."
+                />
+                <input
+                  value={stdin}
+                  onChange={(e) => setStdin(e.target.value)}
+                  className="w-full mt-3 p-2 rounded border text-gray-900"
+                  placeholder="Optional input (stdin)"
+                />
+                <button
+                  onClick={handleRunCode}
+                  disabled={isRunning}
+                  className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isRunning ? 'Running...' : 'Run Code'}
+                </button>
+
+                {runError && <p className="mt-3 text-sm text-red-600">{runError}</p>}
+
+                {runResult && (
+                  <div className="mt-4 bg-gray-100 rounded border p-4">
+                    <p className="text-sm text-gray-700 mb-2">
+                      Status: <span className="font-semibold">{runResult.status?.description || 'Unknown'}</span>
+                    </p>
+                    <p className="text-sm text-gray-700 mb-2">
+                      Time: {runResult.time || '-'}s | Memory: {runResult.memory || '-'} KB
+                    </p>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">Output</p>
+                        <pre className="bg-white border rounded p-2 text-sm overflow-x-auto whitespace-pre-wrap">
+                          {runResult.stdout || '(no output)'}
+                        </pre>
+                      </div>
+                      {(runResult.stderr || runResult.compile_output || runResult.message) && (
+                        <div>
+                          <p className="text-sm font-semibold text-red-700">Errors</p>
+                          <pre className="bg-white border rounded p-2 text-sm overflow-x-auto whitespace-pre-wrap text-red-700">
+                            {runResult.stderr || runResult.compile_output || runResult.message}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                    <p className="mt-3 text-sm font-semibold text-gray-800">
+                      Result Check:{' '}
+                      {evaluatePass(runResult.stdout, runResult.status?.description, lesson?.expectedOutput)
+                        ? 'Passed'
+                        : 'Not matched yet'}
+                    </p>
+                  </div>
+                )}
+              </section>
+            </>
           )}
 
           <section className="pt-2">
             <button
               onClick={handleToggleComplete}
-              disabled={isSaving || (!isCompleted && !canCompleteCurrentLesson)}
+              disabled={isSaving}
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isSaving ? 'Saving...' : isCompleted ? 'Mark as Incomplete' : 'Mark as Complete'}
+              {isSaving ? 'Saving...' : currentSubCompleted ? 'Mark as Incomplete' : 'Mark as Complete'}
             </button>
             {saveMessage && <p className="mt-2 text-sm text-gray-700">{saveMessage}</p>}
-            {!isCompleted && !canCompleteCurrentLesson && (
-              <p className="mt-2 text-sm text-amber-700">
-                {isFirstLesson
-                  ? 'Open Lesson 1.1 before marking this lesson complete.'
-                  : 'Pass both code check and quiz before marking complete.'}
-              </p>
-            )}
           </section>
 
           <section className="pt-2 flex items-center justify-between">
@@ -717,7 +546,6 @@ export default function LessonDetailPage() {
             )}
           </section>
         </article>
-        )}
       </div>
     </main>
   )
