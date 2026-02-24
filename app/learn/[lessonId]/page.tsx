@@ -26,7 +26,6 @@ type ProgressItem = {
 export default function LessonDetailPage() {
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [allLessons, setAllLessons] = useState<Lesson[]>([])
-  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set())
   const [isLocked, setIsLocked] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -77,23 +76,13 @@ export default function LessonDetailPage() {
         const orderedLessons = (lessonsData.lessons || []).slice().sort((a: Lesson, b: Lesson) => a.lessonNumber - b.lessonNumber)
         setAllLessons(orderedLessons)
 
-        const completedIds = new Set<string>(
-          (progressData.progress || [])
-            .filter((item: ProgressItem) => item.completed)
-            .map((item: ProgressItem) => item.lessonId)
-        )
-        setCompletedLessonIds(completedIds)
-
         const selectedLesson = orderedLessons.find((item: Lesson) => item._id === params.lessonId)
         if (!selectedLesson) {
           setError('Lesson not found')
           return
         }
 
-        const currentIndex = orderedLessons.findIndex((item: Lesson) => item._id === params.lessonId)
-        const previousLesson = currentIndex > 0 ? orderedLessons[currentIndex - 1] : null
-        const locked = !!previousLesson && !completedIds.has(previousLesson._id)
-        setIsLocked(locked)
+        setIsLocked(false)
 
         const currentProgress = (progressData.progress || []).find(
           (item: ProgressItem) => item.lessonId === params.lessonId
@@ -211,20 +200,6 @@ export default function LessonDetailPage() {
       } else {
         setIsCompleted(nextCompleted)
       }
-      setCompletedLessonIds((prev) => {
-        const next = new Set(prev)
-        const nextModuleCompleted =
-          isFirstLesson
-            ? (isFirstLessonModuleView
-                ? nextCompleted
-                : isFirstLessonLessonView
-                  ? (!hasReadLesson && hasQuizPassed)
-                  : (hasReadLesson && !hasQuizPassed))
-            : nextCompleted
-        if (nextModuleCompleted) next.add(lesson._id)
-        else next.delete(lesson._id)
-        return next
-      })
       setSaveMessage(nextCompleted ? 'Lesson marked as complete.' : 'Lesson marked as incomplete.')
     } catch {
       setSaveMessage('Network error while saving progress')
@@ -321,11 +296,6 @@ export default function LessonDetailPage() {
         })
         if (completeRes.ok) {
           setIsCompleted(true)
-          setCompletedLessonIds((prev) => {
-            const next = new Set(prev)
-            next.add(lesson._id)
-            return next
-          })
           setSaveMessage('Code + quiz passed. Auto-marked as complete.')
         }
       }
@@ -356,16 +326,13 @@ export default function LessonDetailPage() {
   const currentIndex = allLessons.findIndex((item) => item._id === lesson?._id)
   const previousLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null
   const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
-  const nextLocked = !!nextLesson && !isCompleted
   const canAccessLesson = (targetLesson: Lesson, targetIndex: number) => {
-    if (targetIndex === 0) return true
-    const prev = allLessons[targetIndex - 1]
-    return completedLessonIds.has(prev._id) || targetLesson._id === lesson?._id
+    return targetIndex >= 0 && !!targetLesson
   }
 
   const lessonQuiz = lesson ? pythonQuizzes[lesson.lessonNumber] : undefined
   const isFirstLesson = lesson?.lessonNumber === 1
-  const isExerciseUnlocked = !isFirstLesson || hasReadLesson
+  const isExerciseUnlocked = true
   const canCompleteCurrentLesson = isFirstLesson ? (firstLessonView === 'exercise' ? hasReadLesson : true) : hasPassedAttempt && hasQuizPassed
   const showFirstLessonMenu = isFirstLesson && firstLessonView === 'menu'
   const showLessonTheory = !isFirstLesson || firstLessonView === 'lesson'
@@ -518,8 +485,7 @@ export default function LessonDetailPage() {
               <button
                 type="button"
                 onClick={() => setFirstLessonView('exercise')}
-                disabled={!hasReadLesson}
-                className="relative w-full rounded-xl border border-pink-200 bg-pink-50 px-4 py-4 text-left hover:bg-pink-100 disabled:cursor-not-allowed disabled:opacity-60"
+                className="relative w-full rounded-xl border border-pink-200 bg-pink-50 px-4 py-4 text-left hover:bg-pink-100"
               >
                 {hasQuizPassed && (
                   <span className="absolute right-3 top-3 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-white">
@@ -534,7 +500,7 @@ export default function LessonDetailPage() {
                   <p className="text-lg font-bold text-slate-900">Exercise 1.1: What is Python</p>
                 </div>
                 <p className="text-sm text-slate-600 mt-1">
-                  {hasReadLesson ? 'Click to open exercise.' : 'Read Lesson 1.1 first to unlock.'}
+                  Click to open exercise.
                 </p>
               </button>
             </section>
@@ -621,11 +587,6 @@ export default function LessonDetailPage() {
               <h3 className="text-lg font-semibold mb-2 text-slate-900">
                 {isFirstLesson ? 'Exercise 1.1 Check' : 'Exercise Check'} {hasQuizPassed ? '✓' : ''}
               </h3>
-              {!isExerciseUnlocked && (
-                <p className="mb-3 text-sm font-semibold text-amber-700">
-                  Read Lesson 1 first. Then this exercise check will unlock.
-                </p>
-              )}
               <p className="text-gray-800 mb-3">
                 {isFirstLesson
                   ? 'Question: Python is mainly used to ____ to computers.'
@@ -750,21 +711,12 @@ export default function LessonDetailPage() {
             )}
 
             {nextLesson ? (
-              nextLocked ? (
-                <button
-                  disabled
-                  className="px-4 py-2 bg-gray-300 text-gray-600 rounded cursor-not-allowed"
-                >
-                  Next Lesson (Locked)
-                </button>
-              ) : (
-                <Link
-                  href={`/learn/${nextLesson._id}`}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Next Lesson
-                </Link>
-              )
+              <Link
+                href={`/learn/${nextLesson._id}`}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Next Lesson
+              </Link>
             ) : (
               <span className="text-sm text-gray-500">Course completed</span>
             )}
