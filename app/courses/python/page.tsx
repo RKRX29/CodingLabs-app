@@ -24,6 +24,8 @@ export default function PythonCoursePage() {
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [expandedLessonIds, setExpandedLessonIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const fetchLessons = async () => {
@@ -65,7 +67,87 @@ export default function PythonCoursePage() {
       <div className="pointer-events-none absolute bottom-[-140px] left-1/3 h-[30rem] w-[30rem] rounded-full bg-pink-300/45 blur-3xl" />
       <div className="pointer-events-none absolute inset-x-0 top-24 h-64 bg-gradient-to-r from-purple-200/25 via-pink-200/25 to-orange-200/25 blur-2xl" />
 
-      <div className="relative z-10 max-w-4xl mx-auto">
+      <div className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
+        <aside className="rounded-xl border bg-slate-900 p-4 text-slate-100 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-y-auto">
+          <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800 p-3">
+            <p className="text-sm font-semibold">Course Overview</p>
+            <p className="mt-1 text-xs text-slate-300">
+              {completedIds.size}/{lessons.length} lessons completed
+            </p>
+            <div className="mt-2 h-2 w-full rounded-full bg-slate-700">
+              <div
+                className="h-2 rounded-full bg-violet-400"
+                style={{ width: `${lessons.length ? ((completedIds.size / lessons.length) * 100).toFixed(1) : 0}%` }}
+              />
+            </div>
+            <p className="mt-1 text-xs text-slate-300">
+              Completed: {lessons.length ? ((completedIds.size / lessons.length) * 100).toFixed(1) : '0.0'}%
+            </p>
+          </div>
+
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none"
+            placeholder="Search lessons..."
+          />
+
+          <div className="space-y-2">
+            {lessons
+              .filter((item) => {
+                if (!searchQuery.trim()) return true
+                const q = searchQuery.toLowerCase()
+                return item.title.toLowerCase().includes(q) || String(item.lessonNumber).includes(q)
+              })
+              .map((item) => {
+                const isExpanded = expandedLessonIds.has(item._id)
+                const moduleDone = completedIds.has(item._id)
+                const subPct = moduleDone ? 100 : 0
+                return (
+                  <div key={item._id} className="rounded-lg border border-slate-700 bg-slate-800/70 p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedLessonIds((prev) => {
+                            const next = new Set(prev)
+                            if (next.has(item._id)) next.delete(item._id)
+                            else next.add(item._id)
+                            return next
+                          })
+                        }
+                        className="text-xs text-slate-300"
+                      >
+                        {isExpanded ? '▾' : '▸'}
+                      </button>
+                      <Link href={`/learn/${item._id}?view=menu`} className="flex-1">
+                        <p className="text-sm font-semibold text-white">Lesson {item.lessonNumber}</p>
+                        <p className="text-xs text-slate-300">{item.title}</p>
+                      </Link>
+                      {moduleDone && <span className="text-emerald-400 text-sm">✓</span>}
+                    </div>
+                    <div className="mt-2 h-1.5 w-full rounded-full bg-slate-700">
+                      <div className="h-1.5 rounded-full bg-cyan-400" style={{ width: `${subPct}%` }} />
+                    </div>
+                    {isExpanded && (
+                      <div className="mt-2 space-y-1 text-xs">
+                        <Link href={`/learn/${item._id}?view=lesson`} className="flex items-center justify-between rounded bg-slate-700 px-2 py-1 hover:bg-slate-600">
+                          <span>📘 Lesson {item.lessonNumber}.1</span>
+                          {moduleDone && <span className="text-emerald-300">✓</span>}
+                        </Link>
+                        <Link href={`/learn/${item._id}?view=exercise`} className="flex items-center justify-between rounded bg-slate-700 px-2 py-1 hover:bg-slate-600">
+                          <span>🧩 Exercise {item.lessonNumber}.1</span>
+                          {moduleDone && <span className="text-emerald-300">✓</span>}
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+          </div>
+        </aside>
+
+        <section className="max-w-4xl">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">Python Course</h1>
           <Link
@@ -122,6 +204,7 @@ export default function PythonCoursePage() {
             })}
           </div>
         )}
+        </section>
       </div>
     </main>
   )
