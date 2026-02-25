@@ -76,7 +76,7 @@ export default function PythonCoursePage() {
       <div className="pointer-events-none absolute inset-x-0 top-24 h-64 bg-gradient-to-r from-purple-200/25 via-pink-200/25 to-orange-200/25 blur-2xl" />
 
       <div className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
-        <aside className="rounded-2xl border border-fuchsia-200 bg-gradient-to-b from-white/85 via-fuchsia-50/85 to-rose-50/85 p-4 text-slate-900 shadow-md backdrop-blur-sm lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-y-auto">
+        <aside className="rounded-2xl border border-violet-200 bg-gradient-to-b from-blue-100/85 via-violet-100/85 to-fuchsia-100/85 p-4 text-slate-900 shadow-md backdrop-blur-sm lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-y-auto">
           <div className="mb-4 rounded-xl border border-violet-200 bg-white/80 p-3 shadow-sm">
             <p className="text-sm font-bold text-slate-900">Course Overview</p>
             <p className="mt-1 text-xs text-slate-700">
