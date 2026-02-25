@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { pythonQuizzes } from '@/app/lib/data/pythonQuizzes'
 
 type Lesson = {
@@ -37,8 +37,12 @@ type SubView = 'menu' | 'lesson' | 'exercise'
 
 export default function LessonDetailPage() {
   const params = useParams<{ lessonId: string }>()
+  const searchParams = useSearchParams()
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [allLessons, setAllLessons] = useState<Lesson[]>([])
+  const [progressByLesson, setProgressByLesson] = useState<Record<string, ProgressItem>>({})
+  const [expandedLessonIds, setExpandedLessonIds] = useState<Set<string>>(new Set())
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -59,6 +63,28 @@ export default function LessonDetailPage() {
   const [selectedQuizOption, setSelectedQuizOption] = useState<number | null>(null)
   const [quizMessage, setQuizMessage] = useState('')
 
+  const requestedView = searchParams.get('view')
+  const initialView: SubView =
+    requestedView === 'lesson' || requestedView === 'exercise' || requestedView === 'menu'
+      ? requestedView
+      : 'menu'
+
+  const syncCurrentProgress = (nextLessonDone: boolean, nextExerciseDone: boolean, nextModuleDone: boolean) => {
+    setLessonDone(nextLessonDone)
+    setExerciseDone(nextExerciseDone)
+    setModuleDone(nextModuleDone)
+    if (!lesson?._id) return
+    setProgressByLesson((prev) => ({
+      ...prev,
+      [lesson._id]: {
+        lessonId: lesson._id,
+        completed: nextModuleDone,
+        codePassed: nextLessonDone,
+        quizPassed: nextExerciseDone
+      }
+    }))
+  }
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -76,6 +102,14 @@ export default function LessonDetailPage() {
 
         const ordered = (lessonsData.lessons || []).slice().sort((a: Lesson, b: Lesson) => a.lessonNumber - b.lessonNumber)
         setAllLessons(ordered)
+        const progressMap = (progressData.progress || []).reduce(
+          (acc: Record<string, ProgressItem>, item: ProgressItem) => {
+            acc[item.lessonId] = item
+            return acc
+          },
+          {}
+        )
+        setProgressByLesson(progressMap)
         const selected = ordered.find((item: Lesson) => item._id === params.lessonId)
         if (!selected) {
           setError('Lesson not found')
@@ -86,7 +120,8 @@ export default function LessonDetailPage() {
 
         setLesson(selected)
         setCode(selected.codeExample || '')
-        setSubView('menu')
+        setSubView(initialView)
+        setExpandedLessonIds((prev) => new Set(prev).add(selected._id))
         setSelectedQuizOption(null)
         setQuizMessage('')
         setLessonDone(Boolean(progress?.codePassed))
@@ -100,7 +135,7 @@ export default function LessonDetailPage() {
     }
 
     fetchData()
-  }, [params.lessonId])
+  }, [params.lessonId, initialView])
 
   const currentIndex = useMemo(
     () => allLessons.findIndex((item) => item._id === lesson?._id),
@@ -150,9 +185,7 @@ export default function LessonDetailPage() {
           setSaveMessage(data.error || 'Failed to save progress')
           return
         }
-        setModuleDone(next)
-        setLessonDone(next)
-        setExerciseDone(next)
+        syncCurrentProgress(next, next, next)
         setSelectedQuizOption(null)
         setQuizMessage('')
         setSaveMessage(next ? 'Module marked complete.' : 'Module marked incomplete.')
@@ -168,8 +201,7 @@ export default function LessonDetailPage() {
           setSaveMessage(data.error || 'Failed to save progress')
           return
         }
-        setLessonDone(nextLessonDone)
-        setModuleDone(nextModuleDone)
+        syncCurrentProgress(nextLessonDone, exerciseDone, nextModuleDone)
         setSaveMessage(nextLessonDone ? 'Lesson submodule marked complete.' : 'Lesson submodule marked incomplete.')
         return
       }
@@ -182,7 +214,7 @@ export default function LessonDetailPage() {
         setSaveMessage(data.error || 'Failed to save progress')
         return
       }
-      setExerciseDone(nextExerciseDone)
+      syncCurrentProgress(lessonDone, nextExerciseDone, nextModuleDone)
       setModuleDone(nextModuleDone)
       setSelectedQuizOption(null)
       setQuizMessage('')
@@ -254,7 +286,7 @@ export default function LessonDetailPage() {
 
     setExerciseDone(true)
     const nextModuleDone = lessonDone && true
-    setModuleDone(nextModuleDone)
+    syncCurrentProgress(lessonDone, true, nextModuleDone)
     setQuizMessage(`Correct. ${lessonQuiz.explanation}`)
 
     await saveProgress({
@@ -262,6 +294,27 @@ export default function LessonDetailPage() {
       completed: nextModuleDone
     })
   }
+
+  const getLessonProgress = (item: Lesson) => {
+    if (item._id === lesson?._id) {
+      return { lessonDone, exerciseDone, moduleDone }
+    }
+    const p = progressByLesson[item._id]
+    return {
+      lessonDone: Boolean(p?.codePassed),
+      exerciseDone: Boolean(p?.quizPassed),
+      moduleDone: Boolean(p?.completed)
+    }
+  }
+
+  const filteredLessons = allLessons.filter((item) => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return item.title.toLowerCase().includes(q) || String(item.lessonNumber).includes(q)
+  })
+
+  const courseCompletedCount = allLessons.reduce((acc, item) => acc + (getLessonProgress(item).moduleDone ? 1 : 0), 0)
+  const completionPct = allLessons.length > 0 ? (courseCompletedCount / allLessons.length) * 100 : 0
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-gray-900">Loading lesson...</div>
@@ -282,31 +335,81 @@ export default function LessonDetailPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 p-8 text-gray-900">
-      <div className="max-w-3xl mx-auto">
-        {allLessons.length > 0 && (
-          <nav className="mb-4 p-3 bg-white border rounded-lg">
-            <p className="text-sm text-gray-600 mb-2">Course Navigator</p>
-            <div className="flex flex-wrap gap-2">
-              {allLessons.map((item) => {
-                const isCurrent = item._id === lesson?._id
-                return (
-                  <Link
-                    key={item._id}
-                    href={`/learn/${item._id}`}
-                    className={
-                      isCurrent
-                        ? 'px-3 py-1 rounded text-sm bg-blue-700 text-white'
-                        : 'px-3 py-1 rounded text-sm bg-blue-100 text-blue-800 hover:bg-blue-200'
-                    }
-                  >
-                    {item.lessonNumber}
-                  </Link>
-                )
-              })}
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
+        <aside className="rounded-xl border bg-slate-900 p-4 text-slate-100 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-y-auto">
+          <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800 p-3">
+            <p className="text-sm font-semibold">Course Overview</p>
+            <p className="mt-1 text-xs text-slate-300">
+              {courseCompletedCount}/{allLessons.length} lessons completed
+            </p>
+            <div className="mt-2 h-2 w-full rounded-full bg-slate-700">
+              <div
+                className="h-2 rounded-full bg-violet-400"
+                style={{ width: `${completionPct.toFixed(1)}%` }}
+              />
             </div>
-          </nav>
-        )}
+            <p className="mt-1 text-xs text-slate-300">Completed: {completionPct.toFixed(1)}%</p>
+          </div>
 
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none"
+            placeholder="Search lessons..."
+          />
+
+          <div className="space-y-2">
+            {filteredLessons.map((item) => {
+              const itemProgress = getLessonProgress(item)
+              const itemSubPct = ((itemProgress.lessonDone ? 1 : 0) + (itemProgress.exerciseDone ? 1 : 0)) * 50
+              const isCurrent = item._id === lesson?._id
+              const isExpanded = expandedLessonIds.has(item._id)
+
+              return (
+                <div key={item._id} className={`rounded-lg border p-2 ${isCurrent ? 'border-violet-400 bg-slate-800' : 'border-slate-700 bg-slate-800/70'}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedLessonIds((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(item._id)) next.delete(item._id)
+                          else next.add(item._id)
+                          return next
+                        })
+                      }
+                      className="text-xs text-slate-300"
+                    >
+                      {isExpanded ? '▾' : '▸'}
+                    </button>
+                    <Link href={`/learn/${item._id}?view=menu`} className="flex-1">
+                      <p className="text-sm font-semibold text-white">Lesson {item.lessonNumber}</p>
+                      <p className="text-xs text-slate-300">{item.title}</p>
+                    </Link>
+                    {itemProgress.moduleDone && <span className="text-emerald-400 text-sm">✓</span>}
+                  </div>
+                  <div className="mt-2 h-1.5 w-full rounded-full bg-slate-700">
+                    <div className="h-1.5 rounded-full bg-cyan-400" style={{ width: `${itemSubPct}%` }} />
+                  </div>
+                  {isExpanded && (
+                    <div className="mt-2 space-y-1 text-xs">
+                      <Link href={`/learn/${item._id}?view=lesson`} className="flex items-center justify-between rounded bg-slate-700 px-2 py-1 hover:bg-slate-600">
+                        <span>📘 Lesson {item.lessonNumber}.1</span>
+                        {itemProgress.lessonDone && <span className="text-emerald-300">✓</span>}
+                      </Link>
+                      <Link href={`/learn/${item._id}?view=exercise`} className="flex items-center justify-between rounded bg-slate-700 px-2 py-1 hover:bg-slate-600">
+                        <span>🧩 Exercise {item.lessonNumber}.1</span>
+                        {itemProgress.exerciseDone && <span className="text-emerald-300">✓</span>}
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </aside>
+
+        <section>
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Lesson {lesson?.lessonNumber}</h1>
           <Link href="/courses/python" className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700">
@@ -546,6 +649,7 @@ export default function LessonDetailPage() {
             )}
           </section>
         </article>
+        </section>
       </div>
     </main>
   )
