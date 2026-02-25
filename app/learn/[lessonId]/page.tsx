@@ -334,27 +334,32 @@ export default function LessonDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-8 text-gray-900">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
-        <aside className="rounded-xl border bg-slate-900 p-4 text-slate-100 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-y-auto">
-          <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800 p-3">
-            <p className="text-sm font-semibold">Course Overview</p>
-            <p className="mt-1 text-xs text-slate-300">
+    <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-rose-50 via-fuchsia-50 to-orange-50 p-8 text-gray-900">
+      <div className="pointer-events-none absolute -left-36 -top-24 h-96 w-96 rounded-full bg-fuchsia-300/55 blur-3xl" />
+      <div className="pointer-events-none absolute right-[-120px] top-16 h-[28rem] w-[28rem] rounded-full bg-orange-300/50 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-[-140px] left-1/3 h-[30rem] w-[30rem] rounded-full bg-pink-300/45 blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-0 top-24 h-64 bg-gradient-to-r from-purple-200/25 via-pink-200/25 to-orange-200/25 blur-2xl" />
+
+      <div className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
+        <aside className="rounded-2xl border border-fuchsia-200 bg-gradient-to-b from-white/85 via-fuchsia-50/85 to-rose-50/85 p-4 text-slate-900 shadow-md backdrop-blur-sm lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-y-auto">
+          <div className="mb-4 rounded-xl border border-violet-200 bg-white/80 p-3 shadow-sm">
+            <p className="text-sm font-bold text-slate-900">Course Overview</p>
+            <p className="mt-1 text-xs text-slate-700">
               {courseCompletedCount}/{allLessons.length} lessons completed
             </p>
-            <div className="mt-2 h-2 w-full rounded-full bg-slate-700">
+            <div className="mt-2 h-2 w-full rounded-full bg-violet-100">
               <div
-                className="h-2 rounded-full bg-violet-400"
+                className="h-2 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500"
                 style={{ width: `${completionPct.toFixed(1)}%` }}
               />
             </div>
-            <p className="mt-1 text-xs text-slate-300">Completed: {completionPct.toFixed(1)}%</p>
+            <p className="mt-1 text-xs font-semibold text-slate-700">Completed: {completionPct.toFixed(1)}%</p>
           </div>
 
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none"
+            className="mb-4 w-full rounded-lg border border-fuchsia-200 bg-white/90 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-500"
             placeholder="Search lessons..."
           />
 
@@ -366,7 +371,7 @@ export default function LessonDetailPage() {
               const isExpanded = expandedLessonIds.has(item._id)
 
               return (
-                <div key={item._id} className={`rounded-lg border p-2 ${isCurrent ? 'border-violet-400 bg-slate-800' : 'border-slate-700 bg-slate-800/70'}`}>
+                <div key={item._id} className={`rounded-lg border p-2 shadow-sm ${isCurrent ? 'border-violet-400 bg-white' : 'border-violet-200 bg-white/80'}`}>
                   <div className="flex items-start justify-between gap-2">
                     <button
                       type="button"
@@ -378,26 +383,26 @@ export default function LessonDetailPage() {
                           return next
                         })
                       }
-                      className="text-xs text-slate-300"
+                      className="text-xs text-slate-600"
                     >
                       {isExpanded ? '▾' : '▸'}
                     </button>
                     <Link href={`/learn/${item._id}?view=menu`} className="flex-1">
-                      <p className="text-sm font-semibold text-white">Lesson {item.lessonNumber}</p>
-                      <p className="text-xs text-slate-300">{item.title}</p>
+                      <p className="text-sm font-bold text-slate-900">Lesson {item.lessonNumber}</p>
+                      <p className="text-xs text-slate-700">{item.title}</p>
                     </Link>
                     {itemProgress.moduleDone && <span className="text-emerald-400 text-sm">✓</span>}
                   </div>
-                  <div className="mt-2 h-1.5 w-full rounded-full bg-slate-700">
-                    <div className="h-1.5 rounded-full bg-cyan-400" style={{ width: `${itemSubPct}%` }} />
+                  <div className="mt-2 h-1.5 w-full rounded-full bg-violet-100">
+                    <div className="h-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500" style={{ width: `${itemSubPct}%` }} />
                   </div>
                   {isExpanded && (
                     <div className="mt-2 space-y-1 text-xs">
-                      <Link href={`/learn/${item._id}?view=lesson`} className="flex items-center justify-between rounded bg-slate-700 px-2 py-1 hover:bg-slate-600">
+                      <Link href={`/learn/${item._id}?view=lesson`} className="flex items-center justify-between rounded border border-cyan-200 bg-cyan-50 px-2 py-1 hover:bg-cyan-100">
                         <span>📘 Lesson {item.lessonNumber}.1</span>
                         {itemProgress.lessonDone && <span className="text-emerald-300">✓</span>}
                       </Link>
-                      <Link href={`/learn/${item._id}?view=exercise`} className="flex items-center justify-between rounded bg-slate-700 px-2 py-1 hover:bg-slate-600">
+                      <Link href={`/learn/${item._id}?view=exercise`} className="flex items-center justify-between rounded border border-pink-200 bg-pink-50 px-2 py-1 hover:bg-pink-100">
                         <span>🧩 Exercise {item.lessonNumber}.1</span>
                         {itemProgress.exerciseDone && <span className="text-emerald-300">✓</span>}
                       </Link>
@@ -411,16 +416,18 @@ export default function LessonDetailPage() {
 
         <section>
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Lesson {lesson?.lessonNumber}</h1>
+          <h1 className="bg-gradient-to-r from-violet-700 via-fuchsia-700 to-pink-700 bg-clip-text text-4xl font-black text-transparent">
+            Lesson {lesson?.lessonNumber}
+          </h1>
           <Link href="/courses/python" className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700">
             Back to Course
           </Link>
         </div>
 
-        <article className="border border-fuchsia-200 bg-gradient-to-br from-white/95 via-rose-50/90 to-fuchsia-100/85 rounded-2xl p-6 shadow-md space-y-5">
+        <article className="rounded-2xl border border-fuchsia-200 bg-gradient-to-br from-white/95 via-violet-50/80 to-rose-50/85 p-6 shadow-md space-y-5">
           <div>
-            <h2 className="text-2xl font-bold mb-2 text-slate-900">{lesson?.title}</h2>
-            <p className="text-gray-700">{lesson?.description}</p>
+            <h2 className="mb-2 text-3xl font-black text-slate-900">{lesson?.title}</h2>
+            <p className="text-xl font-medium text-slate-700">{lesson?.description}</p>
           </div>
 
           {subView === 'menu' && (
