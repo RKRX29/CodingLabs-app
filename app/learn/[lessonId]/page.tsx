@@ -343,7 +343,7 @@ export default function LessonDetailPage() {
       <div className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
         <aside className="rounded-2xl border border-violet-200 bg-gradient-to-b from-blue-100/85 via-violet-100/85 to-fuchsia-100/85 p-4 text-slate-900 shadow-md backdrop-blur-sm lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-y-auto">
           <div className="mb-4 rounded-xl border border-violet-200 bg-white/80 p-3 shadow-sm">
-            <p className="text-sm font-bold text-slate-900">Mission Progress</p>
+            <p className="text-sm font-bold text-slate-900">Course Progress</p>
             <p className="mt-1 text-xs text-slate-700">
               {courseCompletedCount}/{allLessons.length} lessons completed
             </p>
@@ -388,7 +388,7 @@ export default function LessonDetailPage() {
                       {isExpanded ? '▾' : '▸'}
                     </button>
                     <Link href={`/learn/${item._id}?view=menu`} className="flex-1">
-                      <p className="text-sm font-bold text-slate-900">Level {item.lessonNumber}</p>
+                      <p className="text-sm font-bold text-slate-900">Lesson {item.lessonNumber}</p>
                       <p className="text-xs text-slate-700">{item.title}</p>
                     </Link>
                     {itemProgress.moduleDone && <span className="text-emerald-400 text-sm">✓</span>}
@@ -399,11 +399,11 @@ export default function LessonDetailPage() {
                   {isExpanded && (
                     <div className="mt-2 space-y-1 text-xs">
                       <Link href={`/learn/${item._id}?view=lesson`} className="flex items-center justify-between rounded border border-cyan-200 bg-cyan-50 px-2 py-1 hover:bg-cyan-100">
-                        <span>📘 Mission {item.lessonNumber}.1</span>
+                        <span>📘 Lesson {item.lessonNumber}.1</span>
                         {itemProgress.lessonDone && <span className="text-emerald-300">✓</span>}
                       </Link>
                       <Link href={`/learn/${item._id}?view=exercise`} className="flex items-center justify-between rounded border border-pink-200 bg-pink-50 px-2 py-1 hover:bg-pink-100">
-                        <span>🧩 Challenge {item.lessonNumber}.1</span>
+                        <span>🧩 Exercise {item.lessonNumber}.1</span>
                         {itemProgress.exerciseDone && <span className="text-emerald-300">✓</span>}
                       </Link>
                     </div>
@@ -442,12 +442,12 @@ export default function LessonDetailPage() {
                     ✓
                   </span>
                 )}
-                <p className="text-xs font-bold text-cyan-700">Mission Card</p>
+                <p className="text-xs font-bold text-cyan-700">Lesson Card</p>
                 <div className="mt-1 flex items-center gap-2">
                   <span className="text-lg leading-none" aria-hidden>
                     📘
                   </span>
-                  <p className="text-lg font-bold text-slate-900">Mission {lesson?.lessonNumber}.1</p>
+                  <p className="text-lg font-bold text-slate-900">Lesson {lesson?.lessonNumber}.1</p>
                 </div>
                 <p className="text-sm text-slate-600 mt-1">Click to open lesson theory.</p>
               </button>
@@ -462,12 +462,12 @@ export default function LessonDetailPage() {
                     ✓
                   </span>
                 )}
-                <p className="text-xs font-bold text-pink-700">Challenge Card</p>
+                <p className="text-xs font-bold text-pink-700">Exercise Card</p>
                 <div className="mt-1 flex items-center gap-2">
                   <span className="text-lg leading-none" aria-hidden>
                     🧩
                   </span>
-                  <p className="text-lg font-bold text-slate-900">Challenge {lesson?.lessonNumber}.1</p>
+                  <p className="text-lg font-bold text-slate-900">Exercise {lesson?.lessonNumber}.1</p>
                 </div>
                 <p className="text-sm text-slate-600 mt-1">Click to open exercise.</p>
               </button>
@@ -476,7 +476,7 @@ export default function LessonDetailPage() {
 
           {subView === 'lesson' && (
             <section className="rounded-xl border border-cyan-200 bg-cyan-50/80 p-4">
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">Mission {lesson?.lessonNumber}.1</h3>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Lesson {lesson?.lessonNumber}.1</h3>
               <p className="whitespace-pre-line text-gray-800">{lesson?.content}</p>
               <div className="mt-4 flex items-center gap-2">
                 <button
@@ -494,7 +494,7 @@ export default function LessonDetailPage() {
                   }}
                   className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"
                 >
-                  Start Challenge
+                  Continue
                 </button>
               </div>
             </section>
@@ -534,7 +534,7 @@ export default function LessonDetailPage() {
               {lessonQuiz && (
                 <section>
                   <h3 className="text-lg font-semibold mb-2 text-slate-900">
-                    Checkpoint Quiz {exerciseDone ? '✓' : ''}
+                    Exercise Quiz {exerciseDone ? '✓' : ''}
                   </h3>
                   <p className="text-gray-800 mb-3">{lessonQuiz.question}</p>
                   <div className="space-y-2">
@@ -555,14 +555,14 @@ export default function LessonDetailPage() {
                     disabled={exerciseDone || selectedQuizOption === null}
                     className="mt-3 px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {exerciseDone ? 'Checkpoint Cleared' : 'Submit Answer'}
+                    {exerciseDone ? 'Quiz Passed' : 'Submit Quiz'}
                   </button>
                   {quizMessage && <p className="mt-2 text-sm text-gray-700">{quizMessage}</p>}
                 </section>
               )}
 
               <section className="rounded-xl border border-blue-200 bg-white/80 p-4">
-                <h3 className="text-lg font-semibold mb-2 text-slate-900">Try It Yourself (Python Lab)</h3>
+                <h3 className="text-lg font-semibold mb-2 text-slate-900">Try It Yourself (Python)</h3>
                 <textarea
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
@@ -580,7 +580,7 @@ export default function LessonDetailPage() {
                   disabled={isRunning}
                   className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {isRunning ? 'Running...' : 'Run Attempt'}
+                  {isRunning ? 'Running...' : 'Run Code'}
                 </button>
 
                 {runError && <p className="mt-3 text-sm text-red-600">{runError}</p>}
