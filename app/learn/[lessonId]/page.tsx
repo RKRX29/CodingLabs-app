@@ -531,7 +531,7 @@ export default function LessonDetailPage() {
                 </section>
               )}
 
-              {lessonQuiz && (
+              {lessonQuiz && lesson?.exercise && (
                 <section>
                   <h3 className="text-lg font-semibold mb-2 text-slate-900">
                     Exercise Quiz {exerciseDone ? '✓' : ''}
@@ -561,6 +561,7 @@ export default function LessonDetailPage() {
                 </section>
               )}
 
+              {lesson?.codeExample && (
               <section className="rounded-xl border border-blue-200 bg-white/80 p-4">
                 <h3 className="text-lg font-semibold mb-2 text-slate-900">Try It Yourself (Python)</h3>
                 <textarea
@@ -618,6 +619,7 @@ export default function LessonDetailPage() {
                   </div>
                 )}
               </section>
+              )}
             </>
           )}
 
