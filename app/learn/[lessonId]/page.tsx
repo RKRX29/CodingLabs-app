@@ -35,39 +35,6 @@ type RunResult = {
 
 type SubView = 'menu' | 'lesson' | 'exercise'
 
-type LessonOneStep = {
-  question: string
-  options: string[]
-  correctIndex: number
-  explanation: string
-}
-
-const lessonOneSteps: LessonOneStep[] = [
-  {
-    question: 'Python is mainly used to ____ to computers.',
-    options: ['draw pictures only', 'give instructions', 'repair devices', 'create folders only'],
-    correctIndex: 1,
-    explanation: 'Correct. Python lets you give instructions to a computer.'
-  },
-  {
-    question: 'Which Python function displays output on screen?',
-    options: ['echo()', 'show()', 'print()', 'output()'],
-    correctIndex: 2,
-    explanation: 'Correct. `print()` is used to display output.'
-  },
-  {
-    question: 'Which statement is true about Python?',
-    options: [
-      'It is used only for games',
-      'It can be used for web, data science, and automation',
-      'It cannot handle input/output',
-      'It is only for mobile apps'
-    ],
-    correctIndex: 1,
-    explanation: 'Correct. Python is general-purpose and used in many fields.'
-  }
-]
-
 export default function LessonDetailPage() {
   const params = useParams<{ lessonId: string }>()
   const searchParams = useSearchParams()
@@ -93,13 +60,11 @@ export default function LessonDetailPage() {
   const [runResult, setRunResult] = useState<RunResult | null>(null)
   const [runError, setRunError] = useState('')
 
+  const [quizStepIndex, setQuizStepIndex] = useState(0)
   const [selectedQuizOption, setSelectedQuizOption] = useState<number | null>(null)
   const [quizMessage, setQuizMessage] = useState('')
-  const [lessonOneStepIndex, setLessonOneStepIndex] = useState(0)
-  const [lessonOneSelected, setLessonOneSelected] = useState<number | null>(null)
-  const [lessonOneFeedback, setLessonOneFeedback] = useState('')
-  const [lessonOneShake, setLessonOneShake] = useState(false)
-  const [lessonOneStepPassed, setLessonOneStepPassed] = useState(false)
+  const [quizShake, setQuizShake] = useState(false)
+  const [quizStepPassed, setQuizStepPassed] = useState(false)
 
   const requestedView = searchParams.get('view')
   const initialView: SubView =
@@ -160,13 +125,11 @@ export default function LessonDetailPage() {
         setCode(selected.codeExample || '')
         setSubView(initialView)
         setExpandedLessonIds((prev) => new Set(prev).add(selected._id))
+        setQuizStepIndex(0)
         setSelectedQuizOption(null)
         setQuizMessage('')
-        setLessonOneStepIndex(0)
-        setLessonOneSelected(null)
-        setLessonOneFeedback('')
-        setLessonOneShake(false)
-        setLessonOneStepPassed(false)
+        setQuizShake(false)
+        setQuizStepPassed(false)
         setLessonDone(Boolean(progress?.codePassed))
         setExerciseDone(Boolean(progress?.quizPassed))
         setModuleDone(Boolean(progress?.completed))
@@ -186,9 +149,8 @@ export default function LessonDetailPage() {
   )
   const previousLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null
   const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
-  const lessonQuiz = lesson ? pythonQuizzes[lesson.lessonNumber] : undefined
-  const isLessonOne = lesson?.lessonNumber === 1
-  const currentLessonOneStep = lessonOneSteps[lessonOneStepIndex]
+  const lessonQuiz = lesson ? pythonQuizzes[lesson.lessonNumber] || [] : []
+  const currentQuizStep = lessonQuiz[quizStepIndex]
   const currentSubCompleted = subView === 'menu' ? moduleDone : subView === 'lesson' ? lessonDone : exerciseDone
 
   const normalizeOutput = (value?: string | null) => (value || '').replace(/\r\n/g, '\n').trim()
@@ -202,6 +164,46 @@ export default function LessonDetailPage() {
       return normalizeOutput(output) === normalizeOutput(expectedOutput)
     }
     return statusDescription === 'Accepted'
+  }
+
+  const renderInlineBold = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g)
+    return parts.map((part, index) => {
+      const isBold = part.startsWith('**') && part.endsWith('**')
+      if (!isBold) return <span key={`${part}-${index}`}>{part}</span>
+      return <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>
+    })
+  }
+
+  const renderFormattedContent = (content: string) => {
+    const lines = content.split('\n')
+    return (
+      <div className="space-y-2">
+        {lines.map((line, index) => {
+          if (!line.trim()) return <div key={`space-${index}`} className="h-2" />
+          if (line.startsWith('## ')) {
+            return (
+              <h4 key={`h2-${index}`} className="pt-1 text-lg font-bold text-slate-900">
+                {renderInlineBold(line.replace('## ', ''))}
+              </h4>
+            )
+          }
+          if (line.startsWith('- ')) {
+            return (
+              <p key={`li-${index}`} className="text-gray-800">
+                <span className="mr-2 font-bold text-violet-700">-</span>
+                {renderInlineBold(line.replace('- ', ''))}
+              </p>
+            )
+          }
+          return (
+            <p key={`p-${index}`} className="text-gray-800">
+              {renderInlineBold(line)}
+            </p>
+          )
+        })}
+      </div>
+    )
   }
 
   const saveProgress = async (payload: Record<string, unknown>) => {
@@ -231,13 +233,12 @@ export default function LessonDetailPage() {
           return
         }
         syncCurrentProgress(next, next, next)
+        setQuizStepIndex(0)
         setSelectedQuizOption(null)
         setQuizMessage('')
         if (!next) {
-          setLessonOneStepIndex(0)
-          setLessonOneSelected(null)
-          setLessonOneFeedback('')
-          setLessonOneStepPassed(false)
+          setQuizShake(false)
+          setQuizStepPassed(false)
         }
         setSaveMessage(next ? 'Module marked complete.' : 'Module marked incomplete.')
         return
@@ -267,13 +268,12 @@ export default function LessonDetailPage() {
       }
       syncCurrentProgress(lessonDone, nextExerciseDone, nextModuleDone)
       setModuleDone(nextModuleDone)
+      setQuizStepIndex(0)
       setSelectedQuizOption(null)
       setQuizMessage('')
       if (!nextExerciseDone) {
-        setLessonOneStepIndex(0)
-        setLessonOneSelected(null)
-        setLessonOneFeedback('')
-        setLessonOneStepPassed(false)
+        setQuizShake(false)
+        setQuizStepPassed(false)
       }
       setSaveMessage(nextExerciseDone ? 'Exercise submodule marked complete.' : 'Exercise submodule marked incomplete.')
     } catch {
@@ -335,55 +335,35 @@ export default function LessonDetailPage() {
 
   const handleSubmitQuiz = async () => {
     if (!lesson) return
+    if (!currentQuizStep) return
 
-    if (isLessonOne) {
-      if (lessonOneStepPassed) {
-        const isLastStep = lessonOneStepIndex >= lessonOneSteps.length - 1
-        if (isLastStep) return
-        setLessonOneStepIndex((prev) => prev + 1)
-        setLessonOneSelected(null)
-        setLessonOneFeedback('')
-        setLessonOneStepPassed(false)
-        return
-      }
-
-      if (lessonOneSelected === null) return
-      const isCorrect = lessonOneSelected === currentLessonOneStep.correctIndex
-      if (!isCorrect) {
-        setLessonOneFeedback('Not quite. Try again.')
-        setLessonOneStepPassed(false)
-        setLessonOneShake(true)
-        setTimeout(() => setLessonOneShake(false), 260)
-        return
-      }
-
-      setLessonOneFeedback(currentLessonOneStep.explanation)
-      setLessonOneStepPassed(true)
-      const isLast = lessonOneStepIndex === lessonOneSteps.length - 1
-      if (!isLast) return
-
-      setExerciseDone(true)
-      const nextModuleDone = lessonDone && true
-      syncCurrentProgress(lessonDone, true, nextModuleDone)
-      await saveProgress({
-        quizPassed: true,
-        completed: nextModuleDone
-      })
+    if (quizStepPassed) {
+      const isLastStep = quizStepIndex >= lessonQuiz.length - 1
+      if (isLastStep) return
+      setQuizStepIndex((prev) => prev + 1)
+      setSelectedQuizOption(null)
+      setQuizMessage('')
+      setQuizStepPassed(false)
       return
     }
 
-    if (!lessonQuiz || selectedQuizOption === null) return
-    const isCorrect = selectedQuizOption === lessonQuiz.correctIndex
+    if (selectedQuizOption === null) return
+    const isCorrect = selectedQuizOption === currentQuizStep.correctIndex
     if (!isCorrect) {
       setQuizMessage('Incorrect. Try again.')
+      setQuizShake(true)
+      setTimeout(() => setQuizShake(false), 220)
       return
     }
+
+    setQuizMessage(`Correct. ${currentQuizStep.explanation}`)
+    setQuizStepPassed(true)
+    const isLast = quizStepIndex === lessonQuiz.length - 1
+    if (!isLast) return
 
     setExerciseDone(true)
     const nextModuleDone = lessonDone && true
     syncCurrentProgress(lessonDone, true, nextModuleDone)
-    setQuizMessage(`Correct. ${lessonQuiz.explanation}`)
-
     await saveProgress({
       quizPassed: true,
       completed: nextModuleDone
@@ -572,29 +552,27 @@ export default function LessonDetailPage() {
           {subView === 'lesson' && (
             <section className="rounded-xl border border-cyan-200 bg-cyan-50/80 p-4">
               <h3 className="text-lg font-semibold text-slate-900 mb-2">Lesson {lesson?.lessonNumber}.1</h3>
-              {isLessonOne && (
-                <div className="mb-4 rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-900 via-slate-900 to-blue-900 p-4 text-white">
-                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-cyan-200">Code Preview</p>
-                  <div className="space-y-2 font-mono text-sm">
-                    <p>
-                      <span className="text-fuchsia-300">language</span>
-                      <span className="text-slate-300"> = </span>
-                      <span className="text-yellow-300">&quot;Python&quot;</span>
-                    </p>
-                    <p>
-                      <span className="text-fuchsia-300">goal</span>
-                      <span className="text-slate-300"> = </span>
-                      <span className="text-green-300">&quot;Give instructions to computers&quot;</span>
-                    </p>
-                    <p>
-                      <span className="text-fuchsia-300">first_output</span>
-                      <span className="text-slate-300"> = </span>
-                      <span className="text-cyan-300">print(&quot;Hello, world!&quot;)</span>
-                    </p>
-                  </div>
+              <div className="mb-4 rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-900 via-slate-900 to-blue-900 p-4 text-white">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-cyan-200">Code Preview</p>
+                <div className="space-y-2 font-mono text-sm">
+                  <p>
+                    <span className="text-fuchsia-300">topic</span>
+                    <span className="text-slate-300"> = </span>
+                    <span className="text-yellow-300">&quot;{lesson?.title || 'Python Lesson'}&quot;</span>
+                  </p>
+                  <p>
+                    <span className="text-fuchsia-300">step</span>
+                    <span className="text-slate-300"> = </span>
+                    <span className="text-green-300">&quot;Lesson {lesson?.lessonNumber}.1&quot;</span>
+                  </p>
+                  <p>
+                    <span className="text-fuchsia-300">example</span>
+                    <span className="text-slate-300"> = </span>
+                    <span className="text-cyan-300">{lesson?.codeExample ? lesson.codeExample.split('\n')[0] : 'print(&quot;Start learning&quot;)'}</span>
+                  </p>
                 </div>
-              )}
-              <p className="whitespace-pre-line text-gray-800">{lesson?.content}</p>
+              </div>
+              {lesson?.content ? renderFormattedContent(lesson.content) : <p className="text-gray-700">Content coming soon.</p>}
               <div className="mt-4 flex items-center gap-2">
                 <button
                   type="button"
@@ -619,35 +597,35 @@ export default function LessonDetailPage() {
 
           {subView === 'exercise' && (
             <>
-              {isLessonOne && currentLessonOneStep && (
+              {currentQuizStep && (
                 <section className="rounded-xl border border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 via-white to-orange-50 p-4 shadow-sm">
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-lg font-bold text-slate-900">Exercise {lesson?.lessonNumber}.1 Quiz</h3>
                     <span className="rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">
-                      Question {lessonOneStepIndex + 1}/{lessonOneSteps.length}
+                      {currentQuizStep.difficulty} - Question {quizStepIndex + 1}/{lessonQuiz.length}
                     </span>
                   </div>
 
                   <div className="mb-3 h-2 w-full rounded-full bg-violet-100">
                     <div
                       className="h-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 transition-all duration-300"
-                      style={{ width: `${((lessonOneStepIndex + (lessonOneStepPassed ? 1 : 0)) / lessonOneSteps.length) * 100}%` }}
+                      style={{ width: `${((quizStepIndex + (quizStepPassed ? 1 : 0)) / lessonQuiz.length) * 100}%` }}
                     />
                   </div>
 
-                  <p className="mb-3 text-base font-semibold text-slate-800">{currentLessonOneStep.question}</p>
+                  <p className="mb-3 text-base font-semibold text-slate-800">{currentQuizStep.question}</p>
 
-                  <div className={`space-y-2 ${lessonOneShake ? 'animate-pulse' : ''}`}>
-                    {currentLessonOneStep.options.map((option, index) => {
-                      const isSelected = lessonOneSelected === index
+                  <div className={`space-y-2 ${quizShake ? 'animate-pulse' : ''}`}>
+                    {currentQuizStep.options.map((option, index) => {
+                      const isSelected = selectedQuizOption === index
                       return (
                         <button
-                          key={`${lessonOneStepIndex}-${option}`}
+                          key={`${quizStepIndex}-${option}`}
                           type="button"
                           onClick={() => {
-                            setLessonOneSelected(index)
-                            setLessonOneFeedback('')
-                            setLessonOneStepPassed(false)
+                            setSelectedQuizOption(index)
+                            setQuizMessage('')
+                            setQuizStepPassed(false)
                           }}
                           className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-medium transition ${
                             isSelected
@@ -661,19 +639,19 @@ export default function LessonDetailPage() {
                     })}
                   </div>
 
-                  {lessonOneFeedback && (
-                    <p className={`mt-3 text-sm ${lessonOneStepPassed ? 'text-emerald-700' : 'text-rose-700'}`}>{lessonOneFeedback}</p>
+                  {quizMessage && (
+                    <p className={`mt-3 text-sm ${quizStepPassed ? 'text-emerald-700' : 'text-rose-700'}`}>{quizMessage}</p>
                   )}
 
                   <button
                     onClick={handleSubmitQuiz}
-                    disabled={exerciseDone || (!lessonOneStepPassed && lessonOneSelected === null)}
+                    disabled={exerciseDone || (!quizStepPassed && selectedQuizOption === null)}
                     className="mt-4 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {exerciseDone
                       ? 'Quiz Passed'
-                      : lessonOneStepPassed
-                        ? lessonOneStepIndex === lessonOneSteps.length - 1
+                      : quizStepPassed
+                        ? quizStepIndex === lessonQuiz.length - 1
                           ? 'Completed'
                           : 'Next Question'
                         : 'Check Answer'}
@@ -693,7 +671,7 @@ export default function LessonDetailPage() {
                 </section>
               )}
 
-              {!isLessonOne && (lesson?.exercise || lesson?.expectedOutput) && (
+              {(lesson?.exercise || lesson?.expectedOutput) && (
                 <section className="space-y-3">
                   {lesson?.exercise && (
                     <div>
@@ -710,37 +688,7 @@ export default function LessonDetailPage() {
                 </section>
               )}
 
-              {!isLessonOne && lessonQuiz && lesson?.exercise && (
-                <section>
-                  <h3 className="text-lg font-semibold mb-2 text-slate-900">
-                    Exercise Quiz {exerciseDone ? '✓' : ''}
-                  </h3>
-                  <p className="text-gray-800 mb-3">{lessonQuiz.question}</p>
-                  <div className="space-y-2">
-                    {lessonQuiz.options.map((option, index) => (
-                      <label key={option} className="flex items-center gap-2 text-sm text-gray-800">
-                        <input
-                          type="radio"
-                          name="lesson-quiz"
-                          checked={selectedQuizOption === index}
-                          onChange={() => setSelectedQuizOption(index)}
-                        />
-                        <span>{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <button
-                    onClick={handleSubmitQuiz}
-                    disabled={exerciseDone || selectedQuizOption === null}
-                    className="mt-3 px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {exerciseDone ? 'Quiz Passed' : 'Submit Quiz'}
-                  </button>
-                  {quizMessage && <p className="mt-2 text-sm text-gray-700">{quizMessage}</p>}
-                </section>
-              )}
-
-              {!isLessonOne && lesson?.codeExample && (
+                            {lesson?.codeExample && (
               <section className="rounded-xl border border-blue-200 bg-white/80 p-4">
                 <h3 className="text-lg font-semibold mb-2 text-slate-900">Try It Yourself (Python)</h3>
                 <textarea
@@ -842,3 +790,4 @@ export default function LessonDetailPage() {
     </main>
   )
 }
+
